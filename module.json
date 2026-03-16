@@ -1,0 +1,45 @@
+{
+    "id": "fm",
+    "id_case": {
+        "snake": "fm",
+        "pascal": "Fm",
+        "slug": "fm",
+        "studly": "fm"
+    },
+    "name": "File Manager",
+    "description": "File Manager module — browse, upload, manage files with per-folder ACL and TinyMCE integration",
+    "version": "1.0.0",
+    "author": "Adods",
+    "email": "theadods@gmail.com",
+    "url_prefix": "fm",
+    "load_priority": 50,
+    "dependencies": {
+        "npm": {
+            "main": {},
+            "dev": {}
+        },
+        "composer": {
+            "main": {},
+            "dev": {}
+        }
+    },
+    "nav": {
+        "backend": {
+            "name": "__fm::menu.be.parent",
+            "position": 10,
+            "route": "fm.index",
+            "class": "",
+            "icon": "fa-solid fa-folder-open",
+            "acl": "fm.manage"
+        }
+    },
+    "acl": {
+        "manage": {
+            "label": "__fm::acl.manage",
+            "create": 1,
+            "read": 1,
+            "update": 1,
+            "delete": 1
+        }
+    }
+}
