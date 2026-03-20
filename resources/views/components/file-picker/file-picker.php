@@ -2,22 +2,30 @@
 
 declare(strict_types=1);
 
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Modelable;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use VmEngine\Fm\Config\FmConfig;
+use VmEngine\Fm\Enums\FmAction;
 use VmEngine\Fm\Models\FmFile;
 use VmEngine\Fm\Services\FileManagerService;
 
 new class extends Component
 {
+    use WithFileUploads;
+
     /** The value synced with the parent via wire:model */
     #[Modelable]
     public string $value = '';
 
     /** Accepted MIME type filter, e.g. "image/*" or "*" */
     public string $accept = '*';
+
+    /** Unique key to scope open/close events when multiple pickers exist on the same page */
+    public string $pickerKey = '';
 
     /** Label displayed above the input */
     public string $label = '';
@@ -31,6 +39,9 @@ new class extends Component
     /** Search filter */
     public string $search = '';
 
+    /** @var mixed */
+    public $uploadFiles = [];
+
     public function mount(): void
     {
         // Default to first configured folder
@@ -41,15 +52,25 @@ new class extends Component
     }
 
     #[On('fm:open-picker')]
-    public function openPicker(string $accept = '*'): void
+    public function openPicker(string $accept = '*', string $key = ''): void
     {
+        if ($key !== '' && $key !== $this->pickerKey) {
+            return;
+        }
+
         $this->accept = $accept;
-        $this->dispatch('fm-picker-open');
+        $eventName = $this->pickerKey !== '' ? 'fm-picker-open-'.$this->pickerKey : 'fm-picker-open';
+        $this->dispatch($eventName);
     }
 
     public function navigateTo(string $path): void
     {
         $this->subPath = $path;
+    }
+
+    public function updatedCurrentFolder(): void
+    {
+        $this->subPath = '';
     }
 
     public function selectFile(int $id): void
@@ -63,13 +84,72 @@ new class extends Component
         $this->value = $url;
 
         // Dispatch to JS — TinyMCE listener and Alpine.js form fields pick this up
-        $this->dispatch('fm:file-selected', url: $url, path: $file->getStoragePath());
+        $this->dispatch('fm:file-selected', url: $url, path: $file->getStoragePath(), fileId: $file->id, key: $this->pickerKey);
         $this->dispatch('fm-picker-close');
     }
 
-    public function updatedCurrentFolder(): void
+    public function updatedUploadFiles(): void
     {
-        $this->subPath = '';
+        if (empty($this->uploadFiles)) {
+            return;
+        }
+
+        $this->upload();
+    }
+
+    public function upload(): void
+    {
+        $user = auth()->user();
+
+        if (! $user || ! FmConfig::canUserDo($user, $this->currentFolder, FmAction::Upload)) {
+            $this->dispatch('notify', variant: 'danger', title: 'Error', message: __('fm::labels.no_permission'));
+
+            return;
+        }
+
+        $uploadConfig = FmConfig::getUploadConfig();
+        $maxKb = (int) ($uploadConfig['max_size_kb'] ?? 10240);
+        $exts = implode(',', $uploadConfig['allowed_extensions'] ?? []);
+
+        try {
+            $this->validate([
+                'uploadFiles.*' => "file|max:{$maxKb}|mimes:{$exts}",
+            ]);
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?? __('fm::labels.upload_failed');
+            $this->dispatch('notify', variant: 'danger', title: __('fm::labels.error'), message: $message);
+            $this->uploadFiles = [];
+
+            return;
+        }
+
+        /** @var FileManagerService $service */
+        $service = app(FileManagerService::class);
+
+        foreach ($this->uploadFiles as $file) {
+            $service->upload($file, $this->currentFolder, $this->subPath, $user?->id);
+        }
+
+        $this->uploadFiles = [];
+        unset($this->fileList);
+        $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.upload_success'));
+    }
+
+    #[Computed()]
+    public function uploadConfig(): array
+    {
+        return FmConfig::getUploadConfig();
+    }
+
+    #[Computed()]
+    public function canUpload(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        return FmConfig::canUserDo($user, $this->currentFolder, FmAction::Upload);
     }
 
     #[Computed()]

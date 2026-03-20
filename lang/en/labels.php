@@ -40,6 +40,9 @@ return [
 
     // Messages
     'upload_success' => 'Files uploaded successfully.',
+    'upload_failed' => 'Upload failed. Check file type and size.',
+    'upload_too_large' => 'File is too large. Maximum allowed size is :max.',
+    'upload_invalid_type' => 'File type is not allowed.',
     'trashed_success' => 'File(s) moved to trash.',
     'restore_success' => 'File(s) restored from trash.',
     'purge_success' => 'File(s) permanently deleted.',
