@@ -135,10 +135,23 @@
                 </button>
             </div>
 
+            {{-- Error: invalid folder parameter --}}
+            @if ($folderError)
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                    <span class="fa-solid fa-triangle-exclamation mb-3 text-4xl text-red-400"></span>
+                    <p class="text-sm font-semibold text-red-600 dark:text-red-400">
+                        {{ __('fm::labels.invalid_folder') }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <code class="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">{{ $folder }}</code>
+                    </p>
+                </div>
+            @else
+
             {{-- Toolbar --}}
             <div class="flex flex-wrap items-center gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
-                {{-- Folder Selector --}}
-                @if (count($this->folders) > 1)
+                {{-- Folder Selector: hidden when locked to a specific folder --}}
+                @if (! $this->isLocked && count($this->folders) > 1)
                     <div class="min-w-[160px]">
                         <select
                             class="form-input py-2 text-sm"
@@ -321,6 +334,8 @@
                     {{ __('fm::labels.cancel') }}
                 </button>
             </div>
+
+            @endif {{-- end @else (no folderError) --}}
         </div>
     </div>
 </div>

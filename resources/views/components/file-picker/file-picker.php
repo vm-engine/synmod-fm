@@ -30,6 +30,13 @@ new class extends Component
     /** Label displayed above the input */
     public string $label = '';
 
+    /**
+     * Optional: lock the picker to a specific folder path.
+     * Must match a folder path registered in fm.json.
+     * If invalid, the picker will show an error instead of the file browser.
+     */
+    public string $folder = '';
+
     /** Currently browsed folder path */
     public string $currentFolder = '';
 
@@ -42,8 +49,24 @@ new class extends Component
     /** @var mixed */
     public $uploadFiles = [];
 
+    /** Set to true when the given $folder parameter is not found in the config */
+    public bool $folderError = false;
+
     public function mount(): void
     {
+        if ($this->folder !== '') {
+            // Validate the requested folder against config
+            if (FmConfig::getFolderByPath($this->folder) === null) {
+                $this->folderError = true;
+
+                return;
+            }
+
+            $this->currentFolder = $this->folder;
+
+            return;
+        }
+
         // Default to first configured folder
         $folders = FmConfig::getFolders();
         if (! empty($folders)) {
@@ -169,7 +192,19 @@ new class extends Component
     #[Computed()]
     public function folders(): array
     {
+        if ($this->folder !== '') {
+            $folderConfig = FmConfig::getFolderByPath($this->folder);
+
+            return $folderConfig !== null ? [$folderConfig] : [];
+        }
+
         return FmConfig::getFolders();
+    }
+
+    #[Computed()]
+    public function isLocked(): bool
+    {
+        return $this->folder !== '' && ! $this->folderError;
     }
 
     #[Computed()]

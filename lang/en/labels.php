@@ -113,4 +113,5 @@ return [
     'no_file_selected' => 'No file selected',
     'selected_file' => 'Selected file',
     'click_to_select' => 'Click a file to select it.',
+    'invalid_folder' => 'The specified folder is not registered in the file manager configuration.',
 ];

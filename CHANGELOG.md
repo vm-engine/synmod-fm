@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.2] - 2026-04-04
+
+### Added
+- `folder` parameter on `file-picker` component to lock the picker to a specific folder
+- Validation of the given folder against `fm.json` config on mount — shows an inline error if the folder path is not registered
+- When locked to a folder, the folder selector dropdown is hidden and navigation is restricted to that folder only
+- `invalid_folder` translation key in `lang/en/labels.php`
+
+## [1.0.1] - 2026-03-16
+
+### Added
+- `FmSetup` artisan command (`fm:setup`) for interactive `fm.json` configuration
+- Ability to update existing `fm.json` without losing other config keys
+
 ## [1.0.0] - 2026-03-16
 
 ### Added
