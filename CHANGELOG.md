@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.3] - 2026-04-06
+
+### Fixed
+- Made `create_fm_files_table` migration idempotent — `up()` now wraps `Schema::create()` in a `Schema::hasTable()` guard so the migration is safe to run multiple times without errors
+
 ## [1.0.2] - 2026-04-04
 
 ### Added
