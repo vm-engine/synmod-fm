@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.5] - 2026-04-07
+
+### Added
+- Indonesian (`id`) translations for all language files (`menu.php`, `acl.php`, `labels.php`)
+
+### Fixed
+- Removed stale `@phpstan-ignore-next-line` comments in `FmConfig` that no longer had matching errors
+- Fixed parallel test race condition in `FmConfigTest` — `beforeEach` now removes `fm.json` to isolate default-value assertions from concurrent `FmSetupCommandTest` writes
+
 ## [1.0.4] - 2026-04-07
 
 ### Changed

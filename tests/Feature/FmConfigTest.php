@@ -5,7 +5,25 @@ declare(strict_types=1);
 use VmEngine\Fm\Config\FmConfig;
 
 beforeEach(function () {
-    // Reset in-memory cache between tests
+    // Remove fm.json so tests exercise defaults, and avoid races with FmSetupCommandTest
+    $this->configPath = synapps_path('config/fm.json');
+    $this->backupPath = synapps_path('config/fm.json.bak.config_test');
+
+    if (file_exists($this->configPath)) {
+        copy($this->configPath, $this->backupPath);
+        unlink($this->configPath);
+    }
+
+    $ref = new ReflectionProperty(FmConfig::class, 'config');
+    $ref->setAccessible(true);
+    $ref->setValue(null, null);
+});
+
+afterEach(function () {
+    if (file_exists($this->backupPath)) {
+        rename($this->backupPath, $this->configPath);
+    }
+
     $ref = new ReflectionProperty(FmConfig::class, 'config');
     $ref->setAccessible(true);
     $ref->setValue(null, null);

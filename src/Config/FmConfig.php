@@ -126,7 +126,6 @@ class FmConfig
      */
     public static function canUserDo(Authenticatable $user, string $folderPath, FmAction $action, array $extraRoles = []): bool
     {
-        /** @phpstan-ignore-next-line */
         if ($user->isDev()) {
             return true;
         }
@@ -156,7 +155,6 @@ class FmConfig
      */
     public static function getAllowedActions(Authenticatable $user, string $folderPath): array
     {
-        /** @phpstan-ignore-next-line */
         if ($user->isDev()) {
             return FmAction::cases();
         }
@@ -196,7 +194,6 @@ class FmConfig
             return [];
         }
 
-        /** @phpstan-ignore-next-line */
         return $user->roles()->pluck('slug')->toArray();
     }
 
