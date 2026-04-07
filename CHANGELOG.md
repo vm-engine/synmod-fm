@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] - 2026-04-07
+
+### Changed
+- Moved Sort, Refresh, and View Toggle controls from the top toolbar into a dedicated file list header row, split into left (sort) and right (refresh + view toggle) groups for better visual organization
+- Improved grid view action overlay: buttons now have a consistent `inline-flex` size (`h-5 w-5`) and the overlay container has a frosted background, rounded corners, and shadow for improved readability
+
 ## [1.0.3] - 2026-04-06
 
 ### Fixed

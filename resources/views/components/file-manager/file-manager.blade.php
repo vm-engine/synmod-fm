@@ -59,47 +59,6 @@
                 </button>
                 @endcanAccess
 
-                {{-- Sort --}}
-                <select class="form-input py-2 text-sm" style="width: 8rem; flex-shrink: 0" x-on:change="$wire.call('applySort', $event.target.value)">
-                    @foreach(['filename' => __('fm::labels.sort_name'), 'size' => __('fm::labels.sort_size'), 'extension' => __('fm::labels.sort_type'), 'created_at' => __('fm::labels.sort_date')] as $col => $label)
-                        <option value="{{ $col }}" {{ $sortBy === $col ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <button
-                    class="btn secondary text-sm"
-                    type="button"
-                    wire:click="applySort('{{ $sortBy }}')"
-                    title="{{ $sortDir === 'asc' ? __('fm::labels.sort_asc') : __('fm::labels.sort_desc') }}"
-                >
-                    <span class="fa-solid {{ $sortDir === 'asc' ? 'fa-arrow-up-a-z' : 'fa-arrow-down-z-a' }}"></span>
-                </button>
-
-                {{-- Refresh --}}
-                <button
-                    class="btn secondary text-sm"
-                    type="button"
-                    wire:click="$refresh"
-                    title="{{ __('fm::labels.refresh') }}"
-                >
-                    <span class="fa-solid fa-rotate-right"></span>
-                </button>
-
-                {{-- View Toggle --}}
-                <div class="flex rounded-lg border border-gray-200 dark:border-gray-700">
-                    <button
-                        class="rounded-l-lg px-3 py-2 text-sm transition {{ $viewMode === 'grid' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800' }}"
-                        type="button"
-                        wire:click="toggleView"
-                        title="{{ __('fm::labels.grid_view') }}"
-                    ><span class="fa-solid fa-grip"></span></button>
-                    <button
-                        class="rounded-r-lg px-3 py-2 text-sm transition {{ $viewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800' }}"
-                        type="button"
-                        wire:click="toggleView"
-                        title="{{ __('fm::labels.list_view') }}"
-                    ><span class="fa-solid fa-list"></span></button>
-                </div>
-
                 {{-- Trash Toggle --}}
                 <button
                     class="btn text-sm whitespace-nowrap {{ $showTrash ? 'danger' : 'secondary' }}"
@@ -265,6 +224,53 @@
             </div>
             @endcanAccess
 
+            {{-- File List Header: Sort + Refresh + View Toggle --}}
+            <div class="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
+                <div class="flex items-center gap-2">
+                    {{-- Sort --}}
+                    <select class="form-input py-1.5 text-sm" style="width: 8rem; flex-shrink: 0" x-on:change="$wire.call('applySort', $event.target.value)">
+                        @foreach(['filename' => __('fm::labels.sort_name'), 'size' => __('fm::labels.sort_size'), 'extension' => __('fm::labels.sort_type'), 'created_at' => __('fm::labels.sort_date')] as $col => $label)
+                            <option value="{{ $col }}" {{ $sortBy === $col ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <button
+                        class="btn secondary text-sm"
+                        type="button"
+                        wire:click="applySort('{{ $sortBy }}')"
+                        title="{{ $sortDir === 'asc' ? __('fm::labels.sort_asc') : __('fm::labels.sort_desc') }}"
+                    >
+                        <span class="fa-solid {{ $sortDir === 'asc' ? 'fa-arrow-up-a-z' : 'fa-arrow-down-z-a' }}"></span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    {{-- Refresh --}}
+                    <button
+                        class="btn secondary text-sm"
+                        type="button"
+                        wire:click="$refresh"
+                        title="{{ __('fm::labels.refresh') }}"
+                    >
+                        <span class="fa-solid fa-rotate-right"></span>
+                    </button>
+
+                    {{-- View Toggle --}}
+                    <div class="flex rounded-lg border border-gray-200 dark:border-gray-700">
+                        <button
+                            class="rounded-l-lg px-3 py-2 text-sm transition {{ $viewMode === 'grid' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800' }}"
+                            type="button"
+                            wire:click="toggleView"
+                            title="{{ __('fm::labels.grid_view') }}"
+                        ><span class="fa-solid fa-grip"></span></button>
+                        <button
+                            class="rounded-r-lg px-3 py-2 text-sm transition {{ $viewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800' }}"
+                            type="button"
+                            wire:click="toggleView"
+                            title="{{ __('fm::labels.list_view') }}"
+                        ><span class="fa-solid fa-list"></span></button>
+                    </div>
+                </div>
+            </div>
+
             {{-- Directories --}}
             @if(count($this->fileList['dirs']) > 0 && !$showTrash)
             <div class="border-b border-gray-100 p-4 dark:border-gray-800">
@@ -342,12 +348,12 @@
 
                         {{-- Actions Overlay --}}
                         <div
-                            class="absolute right-1 top-1 flex gap-1 opacity-0 transition group-hover:opacity-100"
+                            class="absolute right-1 top-1 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100 rounded-md bg-white/90 px-1 py-0.5 shadow dark:bg-gray-800/90"
                             x-on:click.stop
                         >
                             @if($file->isImage())
                             <button
-                                class="btn-icon text-xs"
+                                class="btn-icon inline-flex h-5 w-5 items-center justify-center text-xs"
                                 type="button"
                                 title="{{ __('fm::labels.preview') }}"
                                 @click="previewUrl = '{{ $file->getUrl() }}'; previewOpen = true"
@@ -356,7 +362,7 @@
 
                             @if(!$showTrash)
                                 <a
-                                    class="btn-icon text-xs"
+                                    class="btn-icon inline-flex h-5 w-5 items-center justify-center text-xs"
                                     href="{{ $file->getUrl() }}"
                                     download="{{ $file->filename }}"
                                     title="{{ __('fm::labels.download') }}"
@@ -364,7 +370,7 @@
 
                                 @if($this->canDo('rename'))
                                 <button
-                                    class="btn-icon text-xs"
+                                    class="btn-icon inline-flex h-5 w-5 items-center justify-center text-xs"
                                     type="button"
                                     title="{{ __('fm::labels.rename') }}"
                                     wire:click="startRename({{ $file->id }})"
@@ -372,7 +378,7 @@
                                 @endif
                                 @if($this->canDo('delete'))
                                 <button
-                                    class="btn-icon danger text-xs"
+                                    class="btn-icon danger inline-flex h-5 w-5 items-center justify-center text-xs"
                                     type="button"
                                     title="{{ __('fm::labels.trash') }}"
                                     data-title="{{ __('fm::labels.trash_title') }}"
@@ -396,7 +402,7 @@
                                 @endif
                             @else
                                 <button
-                                    class="btn-icon text-xs"
+                                    class="btn-icon inline-flex h-5 w-5 items-center justify-center text-xs"
                                     type="button"
                                     title="{{ __('fm::labels.restore') }}"
                                     data-title="{{ __('fm::labels.restore_title') }}"
@@ -419,7 +425,7 @@
                                 ><span class="fa-solid fa-undo"></span></button>
                                 @if($this->canDo('delete'))
                                 <button
-                                    class="btn-icon danger text-xs"
+                                    class="btn-icon danger inline-flex h-5 w-5 items-center justify-center text-xs"
                                     type="button"
                                     title="{{ __('fm::labels.purge') }}"
                                     data-title="{{ __('fm::labels.purge_title') }}"
