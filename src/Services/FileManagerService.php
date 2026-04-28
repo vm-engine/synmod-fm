@@ -6,9 +6,11 @@ namespace VmEngine\Fm\Services;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use VmEngine\Fm\Config\FmConfig;
 use VmEngine\Fm\Models\FmFile;
+use VmEngine\SynAuth\Facades\SynAuth;
 
 class FileManagerService
 {
@@ -96,6 +98,13 @@ class FileManagerService
             $this->thumbnailService->generate($fmFile);
         }
 
+        $this->log(
+            $createdBy ?? Auth::id(),
+            'fm.file.upload',
+            'Uploaded '.$fmFile->filename.' to '.$fmFile->getStoragePath().' ('.$fmFile->size.' bytes)',
+            'file'
+        );
+
         return $fmFile;
     }
 
@@ -108,6 +117,13 @@ class FileManagerService
             'is_trashed' => true,
             'trashed_at' => now(),
         ]);
+
+        $this->log(
+            Auth::id(),
+            'fm.file.trash',
+            'Moved '.$file->filename.' to trash ('.$file->getStoragePath().')',
+            'file'
+        );
     }
 
     /**
@@ -119,6 +135,13 @@ class FileManagerService
             'is_trashed' => false,
             'trashed_at' => null,
         ]);
+
+        $this->log(
+            Auth::id(),
+            'fm.file.restore',
+            'Restored '.$file->filename.' from trash ('.$file->getStoragePath().')',
+            'file'
+        );
     }
 
     /**
@@ -128,6 +151,8 @@ class FileManagerService
     {
         $disk = Storage::disk($file->disk);
         $storagePath = $file->getStoragePath();
+        $purgedName = $file->filename;
+        $purgedPath = $storagePath;
 
         if ($disk->exists($storagePath)) {
             $disk->delete($storagePath);
@@ -141,6 +166,13 @@ class FileManagerService
         }
 
         $file->delete();
+
+        $this->log(
+            Auth::id(),
+            'fm.file.purge',
+            'Permanently deleted '.$purgedName.' ('.$purgedPath.')',
+            'file'
+        );
     }
 
     /**
@@ -148,6 +180,7 @@ class FileManagerService
      */
     public function rename(FmFile $file, string $newName): FmFile
     {
+        $oldName = $file->filename;
         $newName = $this->sanitizeFilename($newName);
         $extension = pathinfo($newName, PATHINFO_EXTENSION);
         if ($extension === '') {
@@ -182,6 +215,13 @@ class FileManagerService
             'extension' => strtolower(pathinfo($newName, PATHINFO_EXTENSION) ?: $file->extension),
         ]);
 
+        $this->log(
+            Auth::id(),
+            'fm.file.rename',
+            'Renamed '.$oldName.' → '.$newName.' in '.$file->folder_path,
+            'file'
+        );
+
         return $file->fresh();
     }
 
@@ -194,6 +234,8 @@ class FileManagerService
     {
         $files = FmFile::whereIn('id', $fileIds)->get();
         $disk = Storage::disk(FmConfig::getDisk());
+
+        $movedNames = [];
 
         foreach ($files as $file) {
             $newFilename = $this->uniqueFilename($targetFolderPath, $targetSubPath, $file->filename);
@@ -216,6 +258,18 @@ class FileManagerService
                 'relative_path' => $newRelativePath,
                 'filename' => $newFilename,
             ]);
+
+            $movedNames[] = $newFilename;
+        }
+
+        if ($movedNames !== []) {
+            $target = $targetSubPath !== '' ? $targetFolderPath.'/'.$targetSubPath : $targetFolderPath;
+            $this->log(
+                Auth::id(),
+                'fm.file.move',
+                'Moved '.count($movedNames).' file(s) to '.$target.': '.implode(', ', $movedNames),
+                'file'
+            );
         }
     }
 
@@ -228,6 +282,8 @@ class FileManagerService
     {
         $files = FmFile::whereIn('id', $fileIds)->get();
         $disk = Storage::disk(FmConfig::getDisk());
+
+        $copiedNames = [];
 
         foreach ($files as $file) {
             $newFilename = $this->uniqueFilename($targetFolderPath, $targetSubPath, $file->filename);
@@ -250,6 +306,18 @@ class FileManagerService
             if ($newFile->isImage()) {
                 $this->thumbnailService->generate($newFile);
             }
+
+            $copiedNames[] = $newFilename;
+        }
+
+        if ($copiedNames !== []) {
+            $target = $targetSubPath !== '' ? $targetFolderPath.'/'.$targetSubPath : $targetFolderPath;
+            $this->log(
+                Auth::id(),
+                'fm.file.copy',
+                'Copied '.count($copiedNames).' file(s) to '.$target.': '.implode(', ', $copiedNames),
+                'file'
+            );
         }
     }
 
@@ -264,6 +332,13 @@ class FileManagerService
             : $parentFolderPath.'/'.$name;
 
         Storage::disk(FmConfig::getDisk())->makeDirectory($fullPath);
+
+        $this->log(
+            Auth::id(),
+            'fm.folder.create',
+            'Created folder '.$fullPath,
+            'folder'
+        );
     }
 
     /**
@@ -328,5 +403,21 @@ class FileManagerService
         $name = preg_replace('/\s+/', '_', $name) ?? $name;
 
         return ltrim($name, '.');
+    }
+
+    /**
+     * Write a file-manager activity entry to the auth activity log.
+     *
+     * Skipped when no user context is available (e.g. unauthenticated API
+     * calls or the scheduled trash-purge command), since the
+     * `user_activities` table requires a non-null user_id.
+     */
+    private function log(?int $userId, string $action, string $description, string $feature): void
+    {
+        if ($userId === null) {
+            return;
+        }
+
+        SynAuth::logActivity($userId, $action, $description, $feature, 'fm');
     }
 }

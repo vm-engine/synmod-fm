@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.6] - 2026-04-28
+
+### Added
+- Activity logging for every user-initiated `FileManagerService` action via `SynAuth::logActivity` (module = `fm`):
+  - `fm.file.upload` — feature `file`
+  - `fm.file.trash` — soft delete to trash
+  - `fm.file.restore` — restore from trash
+  - `fm.file.purge` — permanent deletion
+  - `fm.file.rename` — includes old → new name
+  - `fm.file.move` — single summary entry per batch with target path and file list
+  - `fm.file.copy` — same batch summary
+  - `fm.folder.create` — feature `folder`
+- Private `FileManagerService::log()` helper centralises the call and silently skips when no user context is available, so unauthenticated API uploads and the scheduled trash-purge command keep working without violating the `user_activities.user_id NOT NULL` constraint.
+
 ## [1.0.5] - 2026-04-07
 
 ### Added
