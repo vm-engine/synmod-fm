@@ -181,12 +181,41 @@ new class extends Component
         /** @var FileManagerService $service */
         $service = app(FileManagerService::class);
 
-        return $service->listDirectory(
+        $result = $service->listDirectory(
             $this->currentFolder,
             $this->subPath,
             false,
             $this->search
         );
+
+        if ($this->accept !== '*' && $this->accept !== '') {
+            $result['files'] = $result['files']
+                ->filter(fn (FmFile $file) => $this->matchesAccept($file))
+                ->values();
+        }
+
+        return $result;
+    }
+
+    private function matchesAccept(FmFile $file): bool
+    {
+        foreach (explode(',', $this->accept) as $part) {
+            $part = trim($part);
+            if ($part === '*') {
+                return true;
+            }
+            if (str_ends_with($part, '/*') && str_starts_with($file->mime_type, str_replace('*', '', $part))) {
+                return true;
+            }
+            if (str_starts_with($part, '.') && $file->extension === ltrim($part, '.')) {
+                return true;
+            }
+            if ($file->mime_type === $part) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     #[Computed()]

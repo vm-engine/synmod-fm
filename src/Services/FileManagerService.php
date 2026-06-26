@@ -246,10 +246,14 @@ class FileManagerService
                 $disk->move($file->getStoragePath(), $newStoragePath);
             }
 
-            if ($file->has_thumbnail && $disk->exists($file->getThumbnailPath())) {
+            if ($file->has_thumbnail) {
+                $oldThumbPath = $file->getThumbnailPath();
                 $file->filename = $newFilename;
                 $file->relative_path = $newRelativePath;
-                $disk->move($file->getThumbnailPath(), $file->getThumbnailPath());
+                $newThumbPath = $file->getThumbnailPath();
+                if ($disk->exists($oldThumbPath)) {
+                    $disk->move($oldThumbPath, $newThumbPath);
+                }
             }
 
             $file->update([

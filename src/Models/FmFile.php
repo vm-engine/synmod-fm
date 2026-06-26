@@ -120,6 +120,14 @@ class FmFile extends Model
     }
 
     /**
+     * Check if this file is a video.
+     */
+    public function isVideo(): bool
+    {
+        return str_starts_with($this->mime_type, 'video/');
+    }
+
+    /**
      * Get a human-readable file size.
      */
     public function getHumanSize(): string

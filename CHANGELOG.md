@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.7] - 2026-06-26
+
+### Added
+- `FmFile::isVideo()` — checks if `mime_type` starts with `video/`
+- `file-picker` component now filters the file list server-side using the `accept` attribute: supports wildcard mime types (`image/*`, `video/*`), extension lists (`.jpg,.png`), and exact mime types (`application/pdf`); replaced the previous blade-only partial filtering
+- `fm:open-picker` Alpine event listener on `file-picker` supports `key` scoping and dynamic `accept` override, enabling multiple pickers on the same page
+- `module.json` now includes `"is_package": true`
+
+### Changed
+- SVGs and images without a generated thumbnail are now displayed as `<img>` in the grid and list views of both `file-manager` and `file-picker`, instead of falling back to the file icon — SVGs render as proper vector previews at any size without a separate thumbnail file
+- Video files (`mp4`, `webm`, etc.) show a purple `fa-circle-play` icon placeholder in grid and list views instead of a generic file icon
+- `webm` added to the `fileIcon()` helper video extension map
+
+### Fixed
+- Move operation thumbnail bug: when moving files with thumbnails, the old thumbnail path was never saved before updating the file model, causing `Storage::disk()->move(newPath, newPath)` — thumbnails are now correctly relocated to the target directory
+
 ## [1.0.6] - 2026-04-28
 
 ### Added
