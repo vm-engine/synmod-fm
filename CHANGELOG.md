@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.8] - 2026-06-29
+
+### Changed
+- Removed hardcoded `"version"` field from `composer.json` so Composer derives the package version from git tags, fixing version detection on production servers
+
 ## [1.0.7] - 2026-06-26
 
 ### Added
