@@ -14,10 +14,21 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     Storage::fake('public');
 
-    // Reset FmConfig in-memory cache
+    // Pin FmConfig to a known-good array so parallel test workers writing
+    // fm.json (e.g. FmSetupCommandTest) can't corrupt the config mid-test.
     $ref = new ReflectionProperty(FmConfig::class, 'config');
     $ref->setAccessible(true);
-    $ref->setValue(null, null);
+    $ref->setValue(null, [
+        'disk' => 'public',
+        'folders' => [
+            ['path' => 'fm/public', 'name' => 'Public', 'permissions' => [
+                'admin' => ['read', 'upload', 'delete', 'rename', 'move', 'copy', 'mkdir'],
+            ]],
+        ],
+        'image' => ['thumbnail_width' => 200, 'thumbnail_height' => 200],
+        'upload' => ['max_size_kb' => 10240, 'allowed_extensions' => ['jpg', 'png', 'pdf']],
+        'trash' => ['auto_purge_days' => 30],
+    ]);
 
     $this->service = app(FileManagerService::class);
 });

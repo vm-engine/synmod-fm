@@ -73,11 +73,15 @@ class FileManagerService
         $relativePath = $subPath !== '' ? $subPath.'/'.$filename : $filename;
         $storagePath = $folderPath.'/'.$relativePath;
 
-        Storage::disk($disk)->putFileAs(
+        $stored = Storage::disk($disk)->putFileAs(
             $folderPath.($subPath !== '' ? '/'.$subPath : ''),
             $file,
             $filename
         );
+
+        if ($stored === false) {
+            throw new \RuntimeException("Failed to write file '{$filename}' to disk '{$disk}' at path '{$folderPath}'.");
+        }
 
         $fmFile = FmFile::create([
             'disk' => $disk,

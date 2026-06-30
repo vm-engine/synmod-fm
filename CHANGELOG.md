@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.9] - 2026-06-30
+
+### Fixed
+- `FileManagerService::upload()` now throws a `RuntimeException` when `Storage::putFileAs()` returns `false`, preventing a silent failure where the file record was saved to the database without the file being written to disk
+- `FileManagerServiceTest`: pinned `FmConfig` in-memory config to a known-good array in `beforeEach` instead of setting it to `null`, fixing a parallel test race condition where `FmSetupCommandTest` writing `my_disk` to `fm.json` could corrupt the config mid-test
+
 ## [1.0.8] - 2026-06-29
 
 ### Changed
