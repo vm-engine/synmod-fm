@@ -64,6 +64,16 @@ Type-safe actions: `Read`, `Upload`, `Delete`, `Rename`, `Move`, `Copy`, `Mkdir`
 
 Full storage path = `folder_path + '/' + relative_path`. `getStoragePath()` computes this. URLs are **path-only** (no host) via `parse_url($url, PHP_URL_PATH)` to remain host-agnostic.
 
+`FmFile::isImage()` / `isVideo()` check `mime_type` prefix (`image/`, `video/`) — used to decide thumbnail generation and the grid/list preview (SVG and un-thumbnailed images render as `<img>`; video files show a `fa-circle-play` icon placeholder).
+
+`FileManagerService::upload()` throws `RuntimeException` (since v1.0.9) if `Storage::putFileAs()` returns `false`, instead of silently saving an `FmFile` DB record for a file that was never actually written to disk.
+
+### Activity Logging
+Every user-initiated `FileManagerService` action logs via `SynAuth::logActivity()` (module `fm`), through a private `log()` helper that silently no-ops when there's no user context (unauthenticated API uploads, the scheduled trash-purge command):
+- `fm.file.upload` / `fm.file.trash` / `fm.file.restore` / `fm.file.purge` / `fm.file.rename` (old → new name) — feature `file`
+- `fm.file.move` / `fm.file.copy` — one summary entry per batch (target path + file list), not per-file
+- `fm.folder.create` — feature `folder`
+
 ### Thumbnail Generation
 `ThumbnailService` uses PHP GD (no Intervention Image). Thumbnails are stored alongside the original with `_thumb` suffix (e.g. `photo_thumb.jpg`). PNG/WebP transparency is preserved. Thumbnails are only generated when `extension_loaded('gd')` is true — tests with `Storage::fake()` will skip thumbnail generation since GD cannot decode fake file contents.
 
@@ -74,6 +84,17 @@ Both components use the **MFC (Multi-File Component)** pattern — logic in `.ph
 - `file-picker/` — Embeddable modal picker for forms. Registered as `<livewire:fm::file-picker />`.
 
 `file-picker` is `#[Modelable]` — bind with `wire:model` to get back the selected file URL.
+
+**`file-picker` props:**
+- `folder` — lock the picker to one `fm.json`-registered folder path; invalid path shows an inline error instead of the browser, and the folder selector dropdown is hidden
+- `accept` — MIME filter applied **server-side** in the `fileList()` computed property (not just Blade-level): wildcard (`image/*`, `video/*`), extension list (`.jpg,.png`), or exact MIME type; default `*`
+- `pickerKey` — scopes the `fm:open-picker` / `fm:file-selected` browser events so multiple pickers can coexist on one page
+
+**Opening a picker from Alpine/JS:**
+```js
+window.dispatchEvent(new CustomEvent('fm:open-picker', { detail: { accept: 'image/*', key: 'hero-image' } }));
+```
+The `key` argument must match the target picker's `pickerKey` prop (omit both to target a single unscoped picker). `fm:file-selected` is dispatched back with `{ url, path, fileId, key }`.
 
 ### TinyMCE Integration
 `resources/js/fm-tinymce.js` exports a config object to merge into `tinymce.init()`. It listens for `fm:file-selected` (dispatched by `file-picker`) and calls the TinyMCE callback. Import and spread into your TinyMCE init options.

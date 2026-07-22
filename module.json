@@ -8,7 +8,7 @@
     },
     "name": "File Manager",
     "description": "File Manager module — browse, upload, manage files with per-folder ACL and TinyMCE integration",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "author": "Adods",
     "email": "theadods@gmail.com",
     "url_prefix": "fm",

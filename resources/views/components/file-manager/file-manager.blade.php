@@ -36,52 +36,54 @@
         <div class="dark:bg-white/3 space-y-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800">
 
             {{-- Row 1: Search + Actions --}}
-            <div class="flex items-center justify-end gap-2">
-                <div class="w-48 shrink-0">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <div class="w-full sm:w-48 sm:shrink-0">
                     <input
-                        class="form-input"
+                        class="form-input w-full"
                         type="text"
                         placeholder="{{ __('fm::labels.search_placeholder') }}"
                         wire:model.live.debounce="search"
                     >
                 </div>
 
-                @canAccess('fm.manage.create')
-                <label
-                    class="btn primary cursor-pointer text-sm"
-                    wire:loading.attr="disabled"
-                >
-                    <span class="fa-solid fa-upload"></span>
-                    <span class="ml-1">{{ __('fm::labels.upload') }}</span>
-                    <input
-                        type="file"
-                        class="hidden"
-                        multiple
-                        wire:model="uploadFiles"
+                <div class="flex flex-wrap items-center gap-2">
+                    @canAccess('fm.manage.create')
+                    <label
+                        class="btn primary cursor-pointer text-sm"
+                        wire:loading.attr="disabled"
                     >
-                </label>
+                        <span class="fa-solid fa-upload"></span>
+                        <span class="ml-1">{{ __('fm::labels.upload') }}</span>
+                        <input
+                            type="file"
+                            class="hidden"
+                            multiple
+                            wire:model="uploadFiles"
+                        >
+                    </label>
 
-                <button
-                    class="btn secondary text-sm whitespace-nowrap"
-                    type="button"
-                    @click="newFolderOpen = true"
-                >
-                    <span class="fa-solid fa-folder-plus"></span>
-                    <span class="ml-1 hidden sm:inline">{{ __('fm::labels.new_folder') }}</span>
-                </button>
-                @endcanAccess
+                    <button
+                        class="btn secondary text-sm whitespace-nowrap"
+                        type="button"
+                        @click="newFolderOpen = true"
+                    >
+                        <span class="fa-solid fa-folder-plus"></span>
+                        <span class="ml-1 hidden sm:inline">{{ __('fm::labels.new_folder') }}</span>
+                    </button>
+                    @endcanAccess
 
-                {{-- Trash Toggle --}}
-                <button
-                    class="btn text-sm whitespace-nowrap {{ $showTrash ? 'danger' : 'secondary' }}"
-                    type="button"
-                    wire:click="toggleTrash"
-                    title="{{ $showTrash ? __('fm::labels.exit_trash') : __('fm::labels.view_trash') }}"
-                >
-                    <span class="fa-solid fa-trash"></span>
-                    <span
-                        class="ml-1 hidden sm:inline">{{ $showTrash ? __('fm::labels.exit_trash') : __('fm::labels.trash') }}</span>
-                </button>
+                    {{-- Trash Toggle --}}
+                    <button
+                        class="btn text-sm whitespace-nowrap {{ $showTrash ? 'danger' : 'secondary' }}"
+                        type="button"
+                        wire:click="toggleTrash"
+                        title="{{ $showTrash ? __('fm::labels.exit_trash') : __('fm::labels.view_trash') }}"
+                    >
+                        <span class="fa-solid fa-trash"></span>
+                        <span
+                            class="ml-1 hidden sm:inline">{{ $showTrash ? __('fm::labels.exit_trash') : __('fm::labels.trash') }}</span>
+                    </button>
+                </div>
             </div>
 
             {{-- Row 2: Folder Selector + Breadcrumb Path --}}
@@ -89,9 +91,9 @@
 
                 {{-- Folder Selector --}}
                 @if (count($this->folders) > 1)
-                    <div class="min-w-[180px]">
+                    <div class="w-full sm:w-auto sm:min-w-[180px]">
                         <select
-                            class="form-input py-2 text-sm"
+                            class="form-input w-full py-2 text-sm"
                             wire:model.live="currentFolder"
                         >
                             @foreach ($this->folders as $folder)
@@ -267,7 +269,7 @@
 
             {{-- File List Header: Sort + Refresh + View Toggle --}}
             <div
-                class="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
+                class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
                 <div class="flex items-center gap-2">
                     {{-- Sort --}}
                     <select
@@ -327,7 +329,7 @@
                     <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         {{ __('fm::labels.folders') }}
                     </p>
-                    <div class="flex flex-wrap gap-3">
+                    <div class="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
                         @foreach ($this->fileList['dirs'] as $dir)
                             <button
                                 class="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300 dark:hover:border-brand-600 dark:hover:bg-brand-900/20 dark:hover:text-brand-300"
@@ -359,7 +361,7 @@
                 @if ($viewMode === 'grid')
                     {{-- Grid View --}}
                     <div
-                        class="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         @foreach ($this->fileList['files'] as $file)
                             <div
                                 class="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border transition {{ in_array($file->id, $selected) ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20' : 'border-gray-200 bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-gray-600' }}"

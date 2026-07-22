@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.10] - 2026-07-22
+
+### Fixed
+- **Mobile-responsive `file-manager` toolbar** — the search input, upload/new-folder/trash-toggle buttons, folder selector, and file grid now stack/reflow properly on small screens instead of overflowing horizontally; file grid drops to a single column below the `sm` breakpoint.
+
+### Added
+- `README.md` — package overview, feature list, and usage documentation (previously undocumented).
+
+### Documentation
+- `CLAUDE.md` documents `FmFile::isImage()`/`isVideo()`, the activity-logging action list (`fm.file.upload`/`trash`/`restore`/`purge`/`rename`/`move`/`copy`, `fm.folder.create`), and `file-picker` props (`folder`, `accept`, `pickerKey`) plus how to open a picker from Alpine/JS.
+
 ## [1.0.9] - 2026-06-30
 
 ### Fixed
