@@ -1,68 +1,5 @@
 <div
-    x-data="{
-        pickerOpen: false,
-        pickerKey: @js($pickerKey),
-        selectedUrl: @entangle('value').live,
-        dragging: false,
-        dragCounter: 0,
-        uploading: false,
-        maxSizeKb: @js((int) ($this->uploadConfig['max_size_kb'] ?? 10240)),
-        acceptAttr: @js($accept),
-        fileMatchesAccept(file) {
-            if (this.acceptAttr === '*') return true;
-            return this.acceptAttr.split(',').map(p => p.trim()).some(pattern => {
-                if (pattern.endsWith('/*')) return file.type.startsWith(pattern.slice(0, -2));
-                if (pattern.startsWith('.')) return file.name.toLowerCase().endsWith(pattern.toLowerCase());
-                return file.type === pattern;
-            });
-        },
-        validateFiles(files) {
-            const maxBytes = this.maxSizeKb * 1024;
-            const maxLabel = this.maxSizeKb >= 1024 ?
-                (this.maxSizeKb / 1024).toFixed(1).replace(/\.0$/, '') + ' MB' :
-                this.maxSizeKb + ' KB';
-            for (const file of files) {
-                if (!this.fileMatchesAccept(file)) {
-                    return '{{ __('fm::labels.upload_invalid_type') }}';
-                }
-                if (file.size > maxBytes) {
-                    return '{{ __('fm::labels.upload_too_large') }}'.replace(':max', maxLabel);
-                }
-            }
-            return null;
-        },
-        handleFiles(files) {
-            if (!files.length) return;
-            const error = this.validateFiles(files);
-            if (error) {
-                this.$dispatch('notify', { variant: 'danger', title: '{{ __('fm::labels.error') }}', message: error });
-                return;
-            }
-            this.uploading = true;
-            $wire.uploadMultiple('uploadFiles', files,
-                () => { this.uploading = false; },
-                () => {
-                    this.uploading = false;
-                    this.$dispatch('notify', { variant: 'danger', title: '{{ __('fm::labels.error') }}', message: '{{ __('fm::labels.upload_failed') }}' });
-                },
-                () => {}
-            );
-        },
-        handleDrop(e) {
-            this.dragCounter = 0;
-            this.dragging = false;
-            this.handleFiles(Array.from(e.dataTransfer.files));
-        },
-    }"
-    x-init="const evtOpen = pickerKey ? 'fm-picker-open-' + pickerKey : 'fm-picker-open';
-    window.addEventListener(evtOpen, () => { pickerOpen = true; });
-    window.addEventListener('fm-picker-close', () => { pickerOpen = false; });
-    window.addEventListener('fm:open-picker', (e) => {
-        const detail = e.detail || {};
-        if (detail.key && pickerKey && detail.key !== pickerKey) return;
-        if (detail.accept) { acceptAttr = detail.accept; }
-        pickerOpen = true;
-    });"
+    x-data="fmFilePicker()"
     x-on:livewire-upload-error="$dispatch('notify', { variant: 'danger', title: '{{ __('fm::labels.error') }}', message: '{{ __('fm::labels.upload_failed') }}' })"
 >
     {{-- Form Field --}}
@@ -92,7 +29,8 @@
             <button
                 class="input-group-item right btn"
                 type="button"
-                @click="selectedUrl = ''; $wire.set('value', '')"
+                @click="selectedUrl = ''"
+                wire:click="$set('value', '')"
                 title="{{ __('fm::labels.clear') }}"
             >
                 <span class="fa-solid fa-times"></span>
@@ -213,7 +151,7 @@
                                 class="hidden"
                                 multiple
                                 @if ($accept !== '*') accept="{{ $accept }}" @endif
-                                @change="handleFiles(Array.from($event.target.files)); $event.target.value = ''"
+                                @change="handleFileInputChange($event)"
                             >
                         </label>
                     @endif
@@ -231,8 +169,8 @@
                 {{-- File Browser --}}
                 <div
                     class="relative p-4"
-                    x-on:dragenter.prevent="dragCounter++; dragging = true"
-                    x-on:dragleave.prevent="dragCounter--; if (dragCounter === 0) dragging = false"
+                    x-on:dragenter.prevent="handleDragEnter()"
+                    x-on:dragleave.prevent="handleDragLeave()"
                     x-on:dragover.prevent
                     x-on:drop.prevent="handleDrop($event)"
                 >
@@ -349,3 +287,117 @@
         </div>
     </div>
 </div>
+
+<script nonce="{{ csp_nonce() }}">
+    (() => {
+        const register = () => {
+        Alpine.data('fmFilePicker', () => ({
+            pickerOpen: false,
+            pickerKey: @js($pickerKey),
+            selectedUrl: @entangle('value').live,
+            dragging: false,
+            dragCounter: 0,
+            uploading: false,
+            maxSizeKb: @js((int) ($this->uploadConfig['max_size_kb'] ?? 10240)),
+            acceptAttr: @js($accept),
+
+            init() {
+                const evtOpen = this.pickerKey ? 'fm-picker-open-' + this.pickerKey :
+                    'fm-picker-open';
+                window.addEventListener(evtOpen, () => {
+                    this.pickerOpen = true;
+                });
+                window.addEventListener('fm-picker-close', () => {
+                    this.pickerOpen = false;
+                });
+                window.addEventListener('fm:open-picker', (e) => {
+                    const detail = e.detail || {};
+                    if (detail.key && this.pickerKey && detail.key !== this.pickerKey)
+                        return;
+                    if (detail.accept) {
+                        this.acceptAttr = detail.accept;
+                    }
+                    this.pickerOpen = true;
+                });
+            },
+
+            fileMatchesAccept(file) {
+                if (this.acceptAttr === '*') return true;
+                return this.acceptAttr.split(',').map(p => p.trim()).some(pattern => {
+                    if (pattern.endsWith('/*')) return file.type.startsWith(pattern.slice(0,
+                        -2));
+                    if (pattern.startsWith('.')) return file.name.toLowerCase().endsWith(
+                        pattern
+                        .toLowerCase());
+                    return file.type === pattern;
+                });
+            },
+            validateFiles(files) {
+                const maxBytes = this.maxSizeKb * 1024;
+                const maxLabel = this.maxSizeKb >= 1024 ?
+                    (this.maxSizeKb / 1024).toFixed(1).replace(/\.0$/, '') + ' MB' :
+                    this.maxSizeKb + ' KB';
+                for (const file of files) {
+                    if (!this.fileMatchesAccept(file)) {
+                        return '{{ __('fm::labels.upload_invalid_type') }}';
+                    }
+                    if (file.size > maxBytes) {
+                        return '{{ __('fm::labels.upload_too_large') }}'.replace(':max', maxLabel);
+                    }
+                }
+                return null;
+            },
+            handleFiles(files) {
+                if (!files.length) return;
+                const error = this.validateFiles(files);
+                if (error) {
+                    this.$dispatch('notify', {
+                        variant: 'danger',
+                        title: '{{ __('fm::labels.error') }}',
+                        message: error
+                    });
+                    return;
+                }
+                this.uploading = true;
+                this.$wire.uploadMultiple('uploadFiles', files,
+                    () => {
+                        this.uploading = false;
+                    },
+                    () => {
+                        this.uploading = false;
+                        this.$dispatch('notify', {
+                            variant: 'danger',
+                            title: '{{ __('fm::labels.error') }}',
+                            message: '{{ __('fm::labels.upload_failed') }}'
+                        });
+                    },
+                    () => {}
+                );
+            },
+            handleDrop(e) {
+                this.dragCounter = 0;
+                this.dragging = false;
+                this.handleFiles(Array.from(e.dataTransfer.files));
+            },
+            handleFileInputChange(event) {
+                this.handleFiles(Array.from(event.target.files));
+                event.target.value = '';
+            },
+            handleDragEnter() {
+                this.dragCounter++;
+                this.dragging = true;
+            },
+            handleDragLeave() {
+                this.dragCounter--;
+                if (this.dragCounter === 0) {
+                    this.dragging = false;
+                }
+            },
+        }));
+        };
+    document.addEventListener('alpine:init', register);
+    if (window.Alpine) {
+        register();
+    }
+    })();
+</script>

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.0] - Unreleased
+
+### Changed
+- **Requires `vm-engine/synapse` ^2.1|^3.0** — supports synapse's new default CSP-safe Alpine.js build.
+
+### Fixed
+- **CSP-safe Alpine.js compatibility.** `file-manager` and `file-picker` migrated off inline `x-data="{ ... }"` object literals with methods and multi-statement `@click`/`x-on:*` expressions to the `Alpine.data()` registry pattern (required by `vm-engine/synapse` ^3.0's new default CSP-safe Alpine build), guarded against the `alpine:init`/`wire:navigate` timing race. Also fixed a pre-existing gap where `file-manager`'s root scope never exposed `pageName`, which the shared breadcrumbs partial expects from an ancestor Alpine scope — previously a silent no-op, but a hard error under the stricter CSP evaluator.
+
 ## [1.0.10] - 2026-07-22
 
 ### Fixed

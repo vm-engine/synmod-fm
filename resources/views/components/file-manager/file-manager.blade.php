@@ -1,24 +1,5 @@
 <div
-    x-data="{
-        renameOpen: false,
-        newFolderOpen: false,
-        moveOpen: false,
-        previewUrl: null,
-        previewOpen: false,
-        dragging: false,
-        dragCounter: 0,
-        handleDrop(e) {
-            this.dragCounter = 0;
-            this.dragging = false;
-            const files = Array.from(e.dataTransfer.files);
-            if (!files.length) return;
-            $wire.uploadMultiple('uploadFiles', files,
-                () => {},
-                () => {},
-                () => {}
-            );
-        },
-    }"
+    x-data="fmFileManager('{{ $this->title() }}')"
     x-on:fm-open-rename.window="renameOpen = true"
     x-on:fm-close-rename.window="renameOpen = false"
     x-on:fm-open-new-folder.window="newFolderOpen = true"
@@ -166,7 +147,8 @@
                         <button
                             class="btn secondary text-sm"
                             type="button"
-                            @click="moveOpen = true; $wire.set('moveAction', 'move')"
+                            @click="moveOpen = true"
+                            wire:click="$set('moveAction', 'move')"
                         >
                             <span class="fa-solid fa-arrows-alt"></span>
                             {{ __('fm::labels.move') }}
@@ -176,7 +158,8 @@
                         <button
                             class="btn secondary text-sm"
                             type="button"
-                            @click="moveOpen = true; $wire.set('moveAction', 'copy')"
+                            @click="moveOpen = true"
+                            wire:click="$set('moveAction', 'copy')"
                         >
                             <span class="fa-solid fa-copy"></span>
                             {{ __('fm::labels.copy') }}
@@ -249,8 +232,8 @@
         <div
             wire:key="file-browser-{{ $this->listKey }}"
             class="dark:bg-white/3 relative rounded-2xl border border-gray-200 bg-white dark:border-gray-800"
-            x-on:dragenter.prevent="dragCounter++; dragging = true"
-            x-on:dragleave.prevent="dragCounter--; if (dragCounter === 0) dragging = false"
+            x-on:dragenter.prevent="handleDragEnter()"
+            x-on:dragleave.prevent="handleDragLeave()"
             x-on:dragover.prevent
             x-on:drop.prevent="handleDrop($event)"
         >
@@ -427,7 +410,7 @@
                                             class="btn-icon inline-flex h-5 w-5 items-center justify-center text-xs"
                                             type="button"
                                             title="{{ __('fm::labels.preview') }}"
-                                            @click="previewUrl = '{{ $file->getUrl() }}'; previewOpen = true"
+                                            @click="showPreview('{{ $file->getUrl() }}')"
                                         ><span class="fa-solid fa-eye"></span></button>
                                     @endif
 
@@ -651,7 +634,7 @@
                                                     <button
                                                         class="btn-icon has-tooltip group text-xs"
                                                         type="button"
-                                                        @click="previewUrl = '{{ $file->getUrl() }}'; previewOpen = true"
+                                                        @click="showPreview('{{ $file->getUrl() }}')"
                                                     >
                                                         <span class="fa-solid fa-eye"></span>
                                                         <span class="tooltip">{{ __('fm::labels.preview') }}</span>
@@ -1002,6 +985,52 @@
     </div>
 
 </div>
+
+<script nonce="{{ csp_nonce() }}">
+    (() => {
+        const register = () => {
+        Alpine.data('fmFileManager', (pageName) => ({
+            pageName,
+            renameOpen: false,
+            newFolderOpen: false,
+            moveOpen: false,
+            previewUrl: null,
+            previewOpen: false,
+            dragging: false,
+            dragCounter: 0,
+            handleDrop(e) {
+                this.dragCounter = 0;
+                this.dragging = false;
+                const files = Array.from(e.dataTransfer.files);
+                if (!files.length) return;
+                this.$wire.uploadMultiple('uploadFiles', files,
+                    () => {},
+                    () => {},
+                    () => {}
+                );
+            },
+            handleDragEnter() {
+                this.dragCounter++;
+                this.dragging = true;
+            },
+            handleDragLeave() {
+                this.dragCounter--;
+                if (this.dragCounter === 0) {
+                    this.dragging = false;
+                }
+            },
+            showPreview(url) {
+                this.previewUrl = url;
+                this.previewOpen = true;
+            },
+        }));
+        };
+    document.addEventListener('alpine:init', register);
+    if (window.Alpine) {
+        register();
+    }
+    })();
+</script>
 
 @php
     /**
