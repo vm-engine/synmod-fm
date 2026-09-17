@@ -10,6 +10,7 @@ use VmEngine\Fm\Enums\FmAction;
 
 class FmConfig
 {
+    /** @var array<string, mixed>|null */
     private static ?array $config = null;
 
     /**
@@ -32,6 +33,13 @@ class FmConfig
         }
 
         $json = file_get_contents($path);
+
+        if ($json === false) {
+            self::$config = self::defaults();
+
+            return self::$config;
+        }
+
         self::$config = json_decode($json, true) ?? self::defaults();
 
         return self::$config;

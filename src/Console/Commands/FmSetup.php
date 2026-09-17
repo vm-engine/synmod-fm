@@ -130,6 +130,10 @@ class FmSetup extends Command
             );
         }
 
+        if (! is_string($selected)) {
+            throw new \RuntimeException('Unexpected disk selection in setup wizard.');
+        }
+
         return $selected;
     }
 

@@ -21,7 +21,7 @@ class FileManagerService
     /**
      * List contents of a directory: subdirectories and files.
      *
-     * @return array{dirs: array<string>, files: Collection}
+     * @return array{dirs: array<string>, files: Collection<int, FmFile>}
      */
     public function listDirectory(string $folderPath, string $subPath = '', bool $showTrash = false, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): array
     {
@@ -420,12 +420,12 @@ class FileManagerService
      * calls or the scheduled trash-purge command), since the
      * `user_activities` table requires a non-null user_id.
      */
-    private function log(?int $userId, string $action, string $description, string $feature): void
+    private function log(int|string|null $userId, string $action, string $description, string $feature): void
     {
         if ($userId === null) {
             return;
         }
 
-        SynAuth::logActivity($userId, $action, $description, $feature, 'fm');
+        SynAuth::logActivity((int) $userId, $action, $description, $feature, 'fm');
     }
 }

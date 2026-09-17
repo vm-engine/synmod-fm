@@ -15,8 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Run all tools from the **main Laravel project root** (`/srv/www/synapse/`), not from inside this package:
 
 ```bash
-# Static analysis (run BEFORE pint)
-vendor/bin/phpstan analyse packages/synmod-fm/src --level=5
+# Static analysis (run BEFORE pint) — level 7 via the package gate
+vendor/bin/phpstan analyse packages/synmod-fm/src -c packages/synmod-fm/phpstan.neon
 
 # Code style
 vendor/bin/pint packages/synmod-fm/

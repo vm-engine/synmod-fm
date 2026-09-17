@@ -47,6 +47,9 @@ class ThumbnailService
 
         [$thumbW, $thumbH] = $this->calculateDimensions($srcW, $srcH, $maxW, $maxH);
 
+        $thumbW = max(1, $thumbW);
+        $thumbH = max(1, $thumbH);
+
         $thumb = imagecreatetruecolor($thumbW, $thumbH);
 
         // Preserve transparency for PNG/WebP
@@ -54,6 +57,14 @@ class ThumbnailService
             imagealphablending($thumb, false);
             imagesavealpha($thumb, true);
             $transparent = imagecolorallocatealpha($thumb, 255, 255, 255, 127);
+
+            if ($transparent === false) {
+                imagedestroy($source);
+                imagedestroy($thumb);
+
+                return;
+            }
+
             imagefilledrectangle($thumb, 0, 0, $thumbW, $thumbH, $transparent);
         }
 

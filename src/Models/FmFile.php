@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VmEngine\Fm\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,9 +60,14 @@ class FmFile extends Model
         ];
     }
 
+    /**
+     * Get the creator user.
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(config('auth.providers.users.model', 'App\Models\User'), 'created_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**
@@ -93,8 +99,9 @@ class FmFile extends Model
     public function getUrl(): string
     {
         $url = Storage::disk($this->disk)->url($this->getStoragePath());
+        $path = parse_url($url, PHP_URL_PATH);
 
-        return parse_url($url, PHP_URL_PATH) ?? $url;
+        return is_string($path) ? $path : $url;
     }
 
     /**
@@ -104,8 +111,9 @@ class FmFile extends Model
     {
         if ($this->has_thumbnail) {
             $url = Storage::disk($this->disk)->url($this->getThumbnailPath());
+            $path = parse_url($url, PHP_URL_PATH);
 
-            return parse_url($url, PHP_URL_PATH) ?? $url;
+            return is_string($path) ? $path : $url;
         }
 
         return $this->getUrl();
@@ -147,6 +155,9 @@ class FmFile extends Model
 
     /**
      * Scope: active (not trashed).
+     *
+     * @param  Builder<FmFile>  $query
+     * @return Builder<FmFile>
      */
     public function scopeActive(Builder $query): Builder
     {
@@ -155,6 +166,9 @@ class FmFile extends Model
 
     /**
      * Scope: trashed only.
+     *
+     * @param  Builder<FmFile>  $query
+     * @return Builder<FmFile>
      */
     public function scopeTrashed(Builder $query): Builder
     {
@@ -163,6 +177,9 @@ class FmFile extends Model
 
     /**
      * Scope: files in a specific folder and sub-path.
+     *
+     * @param  Builder<FmFile>  $query
+     * @return Builder<FmFile>
      */
     public function scopeInPath(Builder $query, string $folderPath, string $subPath = ''): Builder
     {
@@ -181,6 +198,9 @@ class FmFile extends Model
 
     /**
      * Scope: search by filename or original name.
+     *
+     * @param  Builder<FmFile>  $query
+     * @return Builder<FmFile>
      */
     public function scopeSearch(Builder $query, string $q): Builder
     {

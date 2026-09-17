@@ -3,7 +3,7 @@
 ## [2.0.0] - Unreleased
 
 ### Changed
-- **Requires `vm-engine/synapse` ^2.1|^3.0** — supports synapse's new default CSP-safe Alpine.js build.
+- **Added a `phpstan.neon` gate and fixed the remaining type issues** — a package-level PHPStan config (level 7 + Larastan + scoped ignores + empty baseline) mirroring `synapps-auth`/`synapps-fallback` now keeps `src/` at zero reported errors. Fixes: typed generics on `FmFile` scopes (`Builder<FmFile>`, plus a strong-typed `creator()` relation to `App\Models\User`); `array<string, mixed>`-typed config cache with a `file_get_contents()` guard in `FmConfig`; an explicit is_string guard on the disk-selection wizard in `FmSetup`; narrowed `Collection<int, FmFile>` return for `FileManagerService::listDirectory()` and `int|string|null` handling (with `(int)` coercion) in its `log()` helper; and GD image guards in `ThumbnailService` for zero-dimension and color-allocation failures.
 
 ### Fixed
 - **CSP-safe Alpine.js compatibility.** `file-manager` and `file-picker` migrated off inline `x-data="{ ... }"` object literals with methods and multi-statement `@click`/`x-on:*` expressions to the `Alpine.data()` registry pattern (required by `vm-engine/synapse` ^3.0's new default CSP-safe Alpine build), guarded against the `alpine:init`/`wire:navigate` timing race. Also fixed a pre-existing gap where `file-manager`'s root scope never exposed `pageName`, which the shared breadcrumbs partial expects from an ancestor Alpine scope — previously a silent no-op, but a hard error under the stricter CSP evaluator.
