@@ -306,7 +306,7 @@ new class extends Component
 
         $this->renameFileId = (string) $id;
         $this->renameName = $file->filename;
-        $this->dispatch('fm-open-rename');
+        $this->dispatch('open-modal-fm-rename');
     }
 
     public function confirmRename(): void
@@ -329,7 +329,7 @@ new class extends Component
         app(FileManagerService::class)->rename($file, $this->renameName);
         $this->renameFileId = '';
         $this->renameName = '';
-        $this->dispatch('fm-close-rename');
+        $this->dispatch('close-modal-fm-rename');
         $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.rename_success'));
         $this->listKey++;
     }
@@ -348,7 +348,7 @@ new class extends Component
 
         app(FileManagerService::class)->createFolder($this->currentFolder, $this->subPath, $this->newFolderName);
         $this->newFolderName = '';
-        $this->dispatch('fm-close-new-folder');
+        $this->dispatch('close-modal-fm-new-folder');
         $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.folder_created'));
         $this->listKey++;
     }
@@ -377,7 +377,7 @@ new class extends Component
         }
 
         $this->selected = [];
-        $this->dispatch('fm-close-move');
+        $this->dispatch('close-modal-fm-move');
         $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.move_success'));
         $this->listKey++;
     }
