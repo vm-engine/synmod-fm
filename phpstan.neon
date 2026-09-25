@@ -1,5 +1,4 @@
 includes:
-    - phpstan-baseline.neon
     - ../../vendor/larastan/larastan/extension.neon
 
 parameters:
@@ -7,55 +6,3 @@ parameters:
     paths:
         - src
     tmpDir: build/phpstan
-
-    # Scan only specified paths
-    scanDirectories:
-        - src
-
-    # Report unmatched ignored errors (useful for cleanup)
-    reportUnmatchedIgnoredErrors: false
-
-    # Ignore Laravel Eloquent magic methods and dynamic properties
-    ignoreErrors:
-        # Ignore dynamic properties accessed on Eloquent models
-        - '#Access to an undefined property [a-zA-Z0-9\\_]+::\$[a-zA-Z0-9_]+#'
-
-        # Ignore dynamic where* methods
-        - '#Call to an undefined method [a-zA-Z0-9\\_]+::where[a-zA-Z0-9_]+\(\)#'
-
-        # Ignore relationship methods accessed as properties
-        - '#Property [a-zA-Z0-9\\_]+::\$[a-zA-Z0-9_]+ \(Illuminate\\Database\\Eloquent\\Relations\\[a-zA-Z]+\) does not accept#'
-
-        # Ignore static method calls on Eloquent models
-        - '#Call to an undefined static method [a-zA-Z0-9\\_]+::[a-zA-Z0-9_]+\(\)#'
-
-        # Ignore Livewire magic properties
-        - '#Access to an undefined property Livewire\\Component::\$[a-zA-Z0-9_]+#'
-
-        # Ignore PHPStan stub warnings (not real code)
-        - '#PHPDoc tag @method for method .* contains unknown class#'
-        - '#PHPDoc tag @method for method .* parameter .* with no value type specified#'
-
-        # Ignore Model type resolution issues (Laravel Eloquent returns Model instead of specific type)
-        - '#should return .* but returns .*Illuminate\\Database\\Eloquent\\Model.*#'
-        - '#does not accept .*Illuminate\\Database\\Eloquent\\Model.*#'
-        - '#Parameter .* expects .* Illuminate\\Database\\Eloquent\\Model.*given#'
-
-        # Ignore undefined methods on Model (these are on specific model classes)
-        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Model::#'
-
-        # Ignore unused traits warning
-        - '#Trait .* is used zero times and is not analysed#'
-
-        # Ignore Collection map callback type resolution
-        - '#contains unresolvable type#'
-
-        # Ignore unused type warnings for properties that may be conditionally assigned
-        - '#Property .* is never assigned .* so it can be removed from the property type#'
-
-    # Exclude test files and stubs from analysis
-    excludePaths:
-        - */tests/*
-
-    # Better handling of mixed types from Laravel
-    treatPhpDocTypesAsCertain: false

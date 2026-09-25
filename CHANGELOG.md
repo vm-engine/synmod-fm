@@ -3,6 +3,9 @@
 ## [2.0.0] - Unreleased
 
 ### Changed
+- **PHPStan config trimmed to zero ignores** — the blanket `ignoreErrors` patterns and empty baseline are gone; `src/` passes level 7 without them under current Larastan.
+
+### Changed
 - **Semantic CSS migration** of `file-manager` and `file-picker` (same tier-0/1/2 method as synapps-auth/synmod-queue/synmod-cms). The three file-manager modals (rename, new folder, move/copy) and the picker modal now use `<x-synapse-modal>`, so Escape closes them. The image preview uses the new `<x-synapse-lightbox>`. Search inputs use `<x-synapse-search-box>`, the list view is marked with `datatable-col-checkbox`/`datatable-col-actions`, and the remaining chrome uses new shared `.syn-*` classes in synapse's `synapse-components.css`. Internal modal events renamed: `fm-open-rename`/`fm-close-rename`/`fm-close-new-folder`/`fm-close-move` → `open-modal-fm-rename`/`close-modal-fm-*`. The picker's public events (`fm-picker-open`, `fm-picker-open-{key}`, `fm:open-picker`, `fm-picker-close`, `fm:file-selected`) are unchanged.
 - **Requires `vm-engine/synapse` ^3.0** (was `^2.1|^3.0`) for `<x-synapse-lightbox>` and the new classes.
 - **Added a `phpstan.neon` gate and fixed the remaining type issues** — a package-level PHPStan config (level 7 + Larastan + scoped ignores + empty baseline) mirroring `synapps-auth`/`synapps-fallback` now keeps `src/` at zero reported errors. Fixes: typed generics on `FmFile` scopes (`Builder<FmFile>`, plus a strong-typed `creator()` relation to `App\Models\User`); `array<string, mixed>`-typed config cache with a `file_get_contents()` guard in `FmConfig`; an explicit is_string guard on the disk-selection wizard in `FmSetup`; narrowed `Collection<int, FmFile>` return for `FileManagerService::listDirectory()` and `int|string|null` handling (with `(int)` coercion) in its `log()` helper; and GD image guards in `ThumbnailService` for zero-dimension and color-allocation failures.
