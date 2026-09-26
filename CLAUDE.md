@@ -38,7 +38,7 @@ All runtime config is read from `synapps/config/fm.json` (not a Laravel config f
     "folders": [
         {
             "path": "fm/public",
-            "label": "Public Files",
+            "name": "Public Files",
             "permissions": {
                 "admin": ["read", "upload", "delete", "rename", "move", "copy", "mkdir"]
             }
@@ -64,7 +64,7 @@ Type-safe actions: `Read`, `Upload`, `Delete`, `Rename`, `Move`, `Copy`, `Mkdir`
 
 Full storage path = `folder_path + '/' + relative_path`. `getStoragePath()` computes this. URLs are **path-only** (no host) via `parse_url($url, PHP_URL_PATH)` to remain host-agnostic.
 
-`FmFile::isImage()` / `isVideo()` check `mime_type` prefix (`image/`, `video/`) — used to decide thumbnail generation and the grid/list preview (SVG and un-thumbnailed images render as `<img>`; video files show a `fa-circle-play` icon placeholder).
+`FmFile::isImage()` / `isVideo()` check `mime_type` prefix (`image/`, `video/`) — used to decide thumbnail generation and the tile preview (images render as `<img>`; video/other files show a tinted Phosphor icon; Preview opens the lightbox for images and the details drawer for video).
 
 `FileManagerService::upload()` throws `RuntimeException` (since v1.0.9) if `Storage::putFileAs()` returns `false`, instead of silently saving an `FmFile` DB record for a file that was never actually written to disk.
 
@@ -78,10 +78,10 @@ Every user-initiated `FileManagerService` action logs via `SynAuth::logActivity(
 `ThumbnailService` uses PHP GD (no Intervention Image). Thumbnails are stored alongside the original with `_thumb` suffix (e.g. `photo_thumb.jpg`). PNG/WebP transparency is preserved. Thumbnails are only generated when `extension_loaded('gd')` is true — tests with `Storage::fake()` will skip thumbnail generation since GD cannot decode fake file contents.
 
 ### Livewire Components (MFC pattern)
-Both components use the **MFC (Multi-File Component)** pattern — logic in `.php`, template in `.blade.php`, same folder name:
+Both components use the **MFC** pattern and share `VmEngine\Fm\Livewire\Concerns\BrowsesFolders` (safe sub-path navigation via `FmPath::clean()`, lazily expanded sidebar tree `folderTree`, `pathSegments`) and the presentational partials in `resources/views/partials/` (toolbar, tree, item-tile, item-row, empty, pill, context-menu, details-drawer). Items are normalised by `VmEngine\Fm\Support\FmItem`; icons/tints come from `FileTypeStyle` (Phosphor `ph-*` + `fm-tone-*`).
 
-- `file-manager/` — Full backend file manager. Registered as `<livewire:fm::file-manager />`.
-- `file-picker/` — Embeddable modal picker for forms. Registered as `<livewire:fm::file-picker />`.
+- `file-manager/` — `<livewire:fm::file-manager />`. Clipboard (`#[Session(key: 'fm.clipboard')]`, files only — folder copy/cut/trash are disabled "Coming soon" UI), details drawer (`detailsId`), right-click menu, keyboard shortcuts, sidebar Trash (all trashed files of the root via `FileManagerService::listTrash()`). Remembers `currentFolder`/`subPath`/view/sort via `RemembersQueryParams`; `expanded` is re-derived (current folder + ancestors) in `mountRemembersQueryParams()`.
+- `file-picker/` — `<livewire:fm::file-picker />`, same shell in picker mode: click = `pick()`, double-click / Choose = `selectFile()`. Remembers position in session key `fm:picker:{folder|any}`. New folder is an inline toolbar popover (not a `<form>` — the picker is usually inside a page form); `createFolder()` dispatches `fm-folder-created` to close it.
 
 `file-picker` is `#[Modelable]` — bind with `wire:model` to get back the selected file URL.
 
@@ -95,6 +95,9 @@ Both components use the **MFC (Multi-File Component)** pattern — logic in `.ph
 window.dispatchEvent(new CustomEvent('fm:open-picker', { detail: { accept: 'image/*', key: 'hero-image' } }));
 ```
 The `key` argument must match the target picker's `pickerKey` prop (omit both to target a single unscoped picker). `fm:file-selected` is dispatched back with `{ url, path, fileId, key }`.
+
+### Styling / JS
+Package-owned `resources/dist/fm.css` + `fm.js` (Alpine.data `fmBrowser`, CSP-safe) served by `AssetController` (`route('fm.assets')`, whitelisted, `?v=filemtime`) and loaded with `@assets`. Never add FM classes to synapse-components.css. Button rules must use `.fm .fm-x:not(.btn):not(.btn-icon)` (theme-base button reset is (0,2,1)/(0,3,1)).
 
 ### TinyMCE Integration
 `resources/js/fm-tinymce.js` exports a config object to merge into `tinymce.init()`. It listens for `fm:file-selected` (dispatched by `file-picker`) and calls the TinyMCE callback. Import and spread into your TinyMCE init options.

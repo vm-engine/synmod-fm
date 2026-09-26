@@ -150,3 +150,20 @@ it('lists directory contents', function () {
         ->and($result['dirs'])->toContain('subfolder')
         ->and($result['files'])->toHaveCount(1);
 });
+
+it('lists every trashed file of a storage root regardless of sub-path', function () {
+    $make = fn (string $path, bool $trashed) => FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => $path,
+        'filename' => basename($path), 'original_name' => basename($path), 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => $trashed,
+        'trashed_at' => $trashed ? now() : null,
+    ]);
+
+    $make('root.pdf', true);
+    $make('docs/deep/old.pdf', true);
+    $make('docs/live.pdf', false);
+
+    $names = $this->service->listTrash('fm/public')->pluck('filename')->all();
+
+    expect($names)->toBe(['old.pdf', 'root.pdf']);
+});

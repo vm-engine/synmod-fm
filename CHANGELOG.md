@@ -3,6 +3,26 @@
 ## [2.0.0] - Unreleased
 
 ### Changed
+- **UI/UX redesign** of file manager and file picker: sidebar folder tree (lazy expand, Trash pinned), storage switcher as first path segment, separate search row, tinted file-type tiles (folders same size as files), floating selection pill (name · size · dimensions / count · total size), icon-only actions, list view restyle.
+- FM now owns its styling/behaviour: `resources/dist/fm.css` + `fm.js`, served via `fm.assets` and loaded with Livewire `@assets`; FontAwesome → Phosphor icons.
+- Sidebar Trash lists all trashed files of the storage root (with original location).
+- File picker: click to pick, double-click or **Choose** to select; remembers last folder per locked folder; inline "New folder" popover in the toolbar.
+
+### Added
+- Right-click / ⋯ context menu, clipboard copy/cut/paste (replaces the Move/Copy modal), details drawer, keyboard shortcuts (Space, F2, Del, Ctrl+C/X/V/A, Esc, arrows).
+- Remembers the last folder across visits (expands only the current folder and its ancestors).
+- `FmPath`, `FileTypeStyle`, `FmItem` support classes; `FmFile::formatBytes()`, `dimensions()`, `previewKind()`; `FileManagerService::listTrash()`.
+
+### Fixed
+- **Id-based actions are scoped to the browsed storage root** — trash/restore/purge (single + bulk), rename, the selection summary and the details drawer now only load files whose `folder_path` is the current root (permissions are checked against that root, and Livewire public properties are client-writable). The picker's `selectFile()`/pick likewise only accept files from the browsed root.
+- File picker modal never opened: the modal name contained the mixed-case Livewire id, but HTML lowercases the `@open-modal-*` listener name; it is now lowercased.
+- An unconfigured `fm.json` (no folders) no longer lists the storage disk root — a "No storage configured" state points to `php artisan mod-fm:setup`.
+- Picker `window` listeners are unbound on Alpine `destroy()` (no stacking on re-init).
+
+### Removed
+- Move/Copy modal and its labels; FM-only `.syn-file-tile*`, `.syn-folder-chip*`, `.syn-drop-overlay*`, `.syn-segmented*`, `.syn-file-thumb-sm`, `.syn-file-icon-sm` from synapse-components.css.
+
+### Changed
 - **PHPStan config trimmed to zero ignores** — the blanket `ignoreErrors` patterns and empty baseline are gone; `src/` passes level 7 without them under current Larastan.
 
 ### Changed

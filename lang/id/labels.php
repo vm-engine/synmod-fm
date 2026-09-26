@@ -48,7 +48,6 @@ return [
     'purge_success' => 'File dihapus secara permanen.',
     'rename_success' => 'File berhasil diganti nama.',
     'folder_created' => 'Folder berhasil dibuat.',
-    'move_success' => 'File berhasil dipindahkan/disalin.',
 
     // Tampilan
     'grid_view' => 'Tampilan Grid',
@@ -71,9 +70,6 @@ return [
     // Pencarian
     'search_placeholder' => 'Cari file...',
 
-    // Seleksi
-    'items_selected' => 'item dipilih',
-
     // Modal Ganti Nama
     'rename_file' => 'Ganti Nama File',
     'new_name' => 'Nama Baru',
@@ -82,14 +78,6 @@ return [
     'folder_name' => 'Nama Folder',
     'folder_name_placeholder' => 'folder-saya',
     'folder_name_help' => 'Gunakan huruf, angka, tanda hubung, dan garis bawah saja.',
-
-    // Modal Pindah / Salin
-    'move_files' => 'Pindahkan File',
-    'copy_files' => 'Salin File',
-    'target_folder' => 'Folder Tujuan',
-    'target_sub_path' => 'Sub-path (opsional)',
-    'target_sub_path_placeholder' => 'dokumen/laporan',
-    'target_sub_path_help' => 'Biarkan kosong untuk memindahkan ke root folder.',
 
     // Dialog konfirmasi
     'trash_title' => 'Pindahkan ke Sampah',
@@ -112,6 +100,43 @@ return [
     'select_file' => 'Pilih File',
     'no_file_selected' => 'Tidak ada file dipilih',
     'selected_file' => 'File dipilih',
-    'click_to_select' => 'Klik file untuk memilihnya.',
+    'click_to_select' => 'Klik file untuk memilih, klik dua kali untuk menggunakannya.',
     'invalid_folder' => 'Folder yang ditentukan tidak terdaftar dalam konfigurasi pengelola file.',
+
+    // Desain ulang (2026-09)
+    'cut' => 'Potong',
+    'paste' => 'Tempel',
+    'paste_count' => 'Tempel :count file',
+    'details' => 'Detail',
+    'delete_permanently' => 'Hapus permanen',
+    'coming_soon' => 'Segera hadir',
+    'clipboard_copy' => ':count file disalin ke papan klip.',
+    'clipboard_cut' => ':count file dipotong ke papan klip.',
+    'paste_success' => ':count file ditempel.',
+    'storage' => 'Penyimpanan',
+    'path' => 'Lokasi',
+    'files' => 'File',
+    'folder' => 'Folder',
+    'expand' => 'Buka',
+    'collapse' => 'Tutup',
+    'toggle_folders' => 'Tampilkan folder',
+    'sort' => 'Urutkan',
+    'n_files' => ':count file',
+    'n_folders' => ':count folder',
+    'selection' => 'Pilihan',
+    'select_item' => 'Pilih :name',
+    'more_actions' => 'Aksi lain untuk :name',
+    'close' => 'Tutup',
+    'url' => 'URL',
+    'copy_url' => 'Salin URL',
+    'url_copied' => 'URL disalin ke papan klip.',
+    'dimensions' => 'Dimensi',
+    'created' => 'Dibuat',
+    'uploaded_by' => 'Diunggah oleh',
+    'location' => 'Lokasi',
+    'in_location' => 'di :path',
+    'no_results' => 'Tidak ada file yang cocok dengan ":q".',
+    'choose' => 'Pilih',
+    'not_configured' => 'Belum ada penyimpanan yang dikonfigurasi untuk pengelola file.',
+    'not_configured_help' => 'Jalankan php artisan mod-fm:setup untuk menambahkannya.',
 ];

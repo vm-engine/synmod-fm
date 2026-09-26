@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Modelable;
@@ -10,11 +11,14 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use VmEngine\Fm\Config\FmConfig;
 use VmEngine\Fm\Enums\FmAction;
+use VmEngine\Fm\Livewire\Concerns\BrowsesFolders;
 use VmEngine\Fm\Models\FmFile;
 use VmEngine\Fm\Services\FileManagerService;
+use VmEngine\Fm\Support\FmItem;
 
 new class extends Component
 {
+    use BrowsesFolders;
     use WithFileUploads;
 
     /** The value synced with the parent via wire:model */
@@ -31,31 +35,34 @@ new class extends Component
     public string $label = '';
 
     /**
-     * Optional: lock the picker to a specific folder path.
-     * Must match a folder path registered in fm.json.
-     * If invalid, the picker will show an error instead of the file browser.
+     * Optional: lock the picker to a specific fm.json folder path.
+     * If invalid, the picker shows an error instead of the file browser.
      */
     public string $folder = '';
 
-    /** Currently browsed folder path */
+    /** Currently browsed root */
     public string $currentFolder = '';
 
-    /** Sub-path navigation within folder */
+    /** Sub-path inside the root */
     public string $subPath = '';
 
-    /** Search filter */
     public string $search = '';
+
+    /** File highlighted by a single click; confirmed by choose() */
+    public ?int $pickedId = null;
+
+    /** Name typed into the inline "New folder" popover */
+    public string $newFolderName = '';
 
     /** @var mixed */
     public $uploadFiles = [];
 
-    /** Set to true when the given $folder parameter is not found in the config */
+    /** True when the given $folder is not in the config */
     public bool $folderError = false;
 
     public function mount(): void
     {
         if ($this->folder !== '') {
-            // Validate the requested folder against config
             if (FmConfig::getFolderByPath($this->folder) === null) {
                 $this->folderError = true;
 
@@ -63,14 +70,44 @@ new class extends Component
             }
 
             $this->currentFolder = $this->folder;
+        } else {
+            $this->currentFolder = FmConfig::getFolders()[0]['path'] ?? '';
+        }
 
+        $this->restorePosition();
+    }
+
+    /**
+     * Persist the position on every response (Livewire lifecycle hook, not callable).
+     */
+    public function dehydrate(): void
+    {
+        if (! $this->folderError) {
+            session([$this->memoryKey() => ['currentFolder' => $this->currentFolder, 'subPath' => $this->subPath]]);
+        }
+    }
+
+    private function memoryKey(): string
+    {
+        return 'fm:picker:'.($this->folder !== '' ? $this->folder : 'any');
+    }
+
+    private function restorePosition(): void
+    {
+        $stored = session($this->memoryKey());
+
+        if (! is_array($stored)) {
             return;
         }
 
-        // Default to first configured folder
-        $folders = FmConfig::getFolders();
-        if (! empty($folders)) {
-            $this->currentFolder = $folders[0]['path'];
+        $folder = (string) ($stored['currentFolder'] ?? '');
+
+        if ($this->folder === '' && FmConfig::getFolderByPath($folder) !== null) {
+            $this->currentFolder = $folder;
+        }
+
+        if ($folder === $this->currentFolder) {
+            $this->enterPath((string) ($stored['subPath'] ?? ''));
         }
     }
 
@@ -88,27 +125,68 @@ new class extends Component
 
     public function navigateTo(string $path): void
     {
-        $this->subPath = $path;
+        if ($this->enterPath($path)) {
+            $this->pickedId = null;
+        }
     }
 
-    public function updatedCurrentFolder(): void
+    public function switchFolder(string $path): void
     {
+        if ($this->isLocked) {
+            return;
+        }
+
+        if ($path === $this->currentFolder) {
+            $this->navigateTo('');
+
+            return;
+        }
+
+        if (FmConfig::getFolderByPath($path) === null) {
+            return;
+        }
+
+        $this->currentFolder = $path;
         $this->subPath = '';
+        $this->expanded = [];
+        $this->pickedId = null;
+    }
+
+    public function pick(int $id): void
+    {
+        $this->pickedId = $id;
+    }
+
+    public function choose(): void
+    {
+        if ($this->pickedId !== null) {
+            $this->selectFile($this->pickedId);
+        }
     }
 
     public function selectFile(int $id): void
     {
-        $file = FmFile::active()->find($id);
+        $file = FmFile::active()->where('folder_path', $this->currentFolder)->find($id);
+
         if (! $file) {
             return;
         }
 
         $url = $file->getUrl();
         $this->value = $url;
+        $this->pickedId = null;
 
         // Dispatch to JS — TinyMCE listener and Alpine.js form fields pick this up
         $this->dispatch('fm:file-selected', url: $url, path: $file->getStoragePath(), fileId: $file->id, key: $this->pickerKey);
         $this->dispatch('fm-picker-close');
+    }
+
+    /**
+     * @param  array{kind: string, key: string}  $item
+     */
+    public function isSelected(array $item): bool
+    {
+        return $item['kind'] === 'file' && (int) $item['key'] === $this->pickedId;
     }
 
     public function updatedUploadFiles(): void
@@ -125,7 +203,7 @@ new class extends Component
         $user = auth()->user();
 
         if (! $user || ! FmConfig::canUserDo($user, $this->currentFolder, FmAction::Upload)) {
-            $this->dispatch('notify', variant: 'danger', title: 'Error', message: __('fm::labels.no_permission'));
+            $this->dispatch('notify', variant: 'danger', title: __('fm::labels.error'), message: __('fm::labels.no_permission'));
 
             return;
         }
@@ -135,9 +213,7 @@ new class extends Component
         $exts = implode(',', $uploadConfig['allowed_extensions'] ?? []);
 
         try {
-            $this->validate([
-                'uploadFiles.*' => "file|max:{$maxKb}|mimes:{$exts}",
-            ]);
+            $this->validate(['uploadFiles.*' => "file|max:{$maxKb}|mimes:{$exts}"]);
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?? __('fm::labels.upload_failed');
             $this->dispatch('notify', variant: 'danger', title: __('fm::labels.error'), message: $message);
@@ -146,47 +222,64 @@ new class extends Component
             return;
         }
 
-        /** @var FileManagerService $service */
         $service = app(FileManagerService::class);
 
         foreach ($this->uploadFiles as $file) {
-            $service->upload($file, $this->currentFolder, $this->subPath, $user?->id);
+            $service->upload($file, $this->currentFolder, $this->subPath, $user->id);
         }
 
         $this->uploadFiles = [];
-        unset($this->fileList);
+        unset($this->fileList, $this->items);
         $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.upload_success'));
     }
 
-    #[Computed()]
-    public function uploadConfig(): array
+    /**
+     * Inline "New folder" popover: create in the current folder, then tell
+     * fmBrowser to close the popover (fm-folder-created).
+     */
+    public function createFolder(): void
     {
-        return FmConfig::getUploadConfig();
+        if (! $this->canMkdir) {
+            $this->dispatch('notify', variant: 'danger', title: __('fm::labels.error'), message: __('fm::labels.no_permission'));
+
+            return;
+        }
+
+        $this->validate(['newFolderName' => 'required|string|max:100|alpha_dash']);
+
+        app(FileManagerService::class)->createFolder($this->currentFolder, $this->subPath, $this->newFolderName);
+
+        $this->newFolderName = '';
+        unset($this->fileList, $this->items, $this->folderTree);
+        $this->dispatch('fm-folder-created');
+        $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.folder_created'));
     }
 
     #[Computed()]
     public function canUpload(): bool
     {
         $user = auth()->user();
-        if (! $user) {
-            return false;
-        }
 
-        return FmConfig::canUserDo($user, $this->currentFolder, FmAction::Upload);
+        return $user !== null && FmConfig::canUserDo($user, $this->currentFolder, FmAction::Upload);
+    }
+
+    #[Computed()]
+    public function canMkdir(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && FmConfig::canUserDo($user, $this->currentFolder, FmAction::Mkdir);
     }
 
     #[Computed()]
     public function fileList(): array
     {
-        /** @var FileManagerService $service */
-        $service = app(FileManagerService::class);
+        // No configured root (empty fm.json): never fall back to listing the disk root.
+        if ($this->currentFolderConfig === null) {
+            return ['dirs' => [], 'files' => new EloquentCollection];
+        }
 
-        $result = $service->listDirectory(
-            $this->currentFolder,
-            $this->subPath,
-            false,
-            $this->search
-        );
+        $result = app(FileManagerService::class)->listDirectory($this->currentFolder, $this->subPath, false, $this->search);
 
         if ($this->accept !== '*' && $this->accept !== '') {
             $result['files'] = $result['files']
@@ -197,10 +290,29 @@ new class extends Component
         return $result;
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    #[Computed()]
+    public function items(): array
+    {
+        $dirs = array_map(fn (string $dir): array => FmItem::dir($this->subPath, $dir), $this->fileList['dirs']);
+        $files = $this->fileList['files']->map(fn (FmFile $file): array => FmItem::file($file))->all();
+
+        return [...$dirs, ...$files];
+    }
+
+    #[Computed()]
+    public function pickedFile(): ?FmFile
+    {
+        return $this->pickedId === null ? null : FmFile::active()->where('folder_path', $this->currentFolder)->find($this->pickedId);
+    }
+
     private function matchesAccept(FmFile $file): bool
     {
         foreach (explode(',', $this->accept) as $part) {
             $part = trim($part);
+
             if ($part === '*') {
                 return true;
             }
@@ -242,23 +354,43 @@ new class extends Component
         return FmConfig::getFolderByPath($this->currentFolder);
     }
 
+    /**
+     * Modal name for this picker. Lowercased because HTML lowercases attribute
+     * names, so the synapse modal's @open-modal-{name} listener is bound in
+     * lowercase — a mixed-case Livewire id would never match the dispatch.
+     */
     #[Computed()]
-    public function pathSegments(): array
+    public function modalName(): string
     {
-        if ($this->subPath === '') {
-            return [];
-        }
+        return 'fm-picker-'.strtolower($this->getId());
+    }
 
-        $parts = explode('/', $this->subPath);
-        $segments = [];
-        $accumulated = '';
+    /**
+     * @return array<string, mixed>
+     */
+    #[Computed()]
+    public function jsConfig(): array
+    {
+        $upload = FmConfig::getUploadConfig();
 
-        foreach ($parts as $part) {
-            $accumulated = $accumulated !== '' ? $accumulated.'/'.$part : $part;
-            $segments[] = ['name' => $part, 'path' => $accumulated];
-        }
-
-        return $segments;
+        return [
+            'mode' => 'picker',
+            'modalName' => $this->modalName,
+            'pickerKey' => $this->pickerKey,
+            'canUpload' => $this->canUpload,
+            'maxSizeKb' => (int) ($upload['max_size_kb'] ?? 10240),
+            'allowedExtensions' => array_values($upload['allowed_extensions'] ?? []),
+            'accept' => $this->accept,
+            'labels' => [
+                'cancel' => __('fm::labels.cancel'),
+                'error' => __('fm::labels.error'),
+                'success' => __('fm::labels.success'),
+                'uploadFailed' => __('fm::labels.upload_failed'),
+                'uploadTooLarge' => __('fm::labels.upload_too_large'),
+                'uploadInvalidType' => __('fm::labels.upload_invalid_type'),
+                'urlCopied' => __('fm::labels.url_copied'),
+            ],
+        ];
     }
 
     public function render()

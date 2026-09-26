@@ -140,8 +140,14 @@ class FmFile extends Model
      */
     public function getHumanSize(): string
     {
-        $bytes = $this->size;
+        return self::formatBytes((int) $this->size);
+    }
 
+    /**
+     * Format a byte count as B / KB / MB (one decimal, trailing .0 dropped).
+     */
+    public static function formatBytes(int $bytes): string
+    {
         if ($bytes < 1024) {
             return $bytes.' B';
         }
@@ -151,6 +157,39 @@ class FmFile extends Model
         }
 
         return round($bytes / 1048576, 1).' MB';
+    }
+
+    /**
+     * "W×H" when width/height attributes are present, otherwise null.
+     *
+     * The fm_files table has no width/height columns yet — reading the raw
+     * attribute array (not $this->width) keeps this safe under
+     * Model::preventAccessingMissingAttributes() and lights up automatically
+     * once the columns are added.
+     */
+    public function dimensions(): ?string
+    {
+        $attributes = $this->getAttributes();
+        $width = $attributes['width'] ?? null;
+        $height = $attributes['height'] ?? null;
+
+        if (! is_numeric($width) || ! is_numeric($height)) {
+            return null;
+        }
+
+        return (int) $width.'×'.(int) $height;
+    }
+
+    /**
+     * How the UI can preview this file: "image", "video", or null.
+     */
+    public function previewKind(): ?string
+    {
+        return match (true) {
+            $this->isImage() => 'image',
+            $this->isVideo() => 'video',
+            default => null,
+        };
     }
 
     /**

@@ -142,3 +142,23 @@ it('scopes files in specific sub-path', function () {
     expect($docs)->toHaveCount(1)
         ->and($docs->first()->filename)->toBe('report.pdf');
 });
+
+it('formats byte counts for humans', function () {
+    expect(FmFile::formatBytes(512))->toBe('512 B')
+        ->and(FmFile::formatBytes(2048))->toBe('2 KB')
+        ->and(FmFile::formatBytes(1572864))->toBe('1.5 MB');
+});
+
+it('reports dimensions only when width and height attributes exist', function () {
+    $file = new FmFile;
+    expect($file->dimensions())->toBeNull();
+
+    $file->forceFill(['width' => 1920, 'height' => 1080]);
+    expect($file->dimensions())->toBe('1920×1080');
+});
+
+it('reports the preview kind from the mime type', function () {
+    expect((new FmFile(['mime_type' => 'image/png']))->previewKind())->toBe('image')
+        ->and((new FmFile(['mime_type' => 'video/mp4']))->previewKind())->toBe('video')
+        ->and((new FmFile(['mime_type' => 'application/pdf']))->previewKind())->toBeNull();
+});

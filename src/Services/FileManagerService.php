@@ -63,6 +63,25 @@ class FileManagerService
     }
 
     /**
+     * All trashed files of a storage root (any sub-path) — backs the sidebar Trash view.
+     *
+     * @return Collection<int, FmFile>
+     */
+    public function listTrash(string $folderPath, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): Collection
+    {
+        $query = FmFile::trashed()->where('folder_path', $folderPath);
+
+        if ($search !== '') {
+            $query->search($search);
+        }
+
+        $allowed = ['filename', 'size', 'extension', 'created_at'];
+        $col = in_array($sortBy, $allowed, true) ? $sortBy : 'filename';
+
+        return $query->orderBy($col, $sortDir === 'desc' ? 'desc' : 'asc')->get();
+    }
+
+    /**
      * Upload a file to the given folder and sub-path.
      */
     public function upload(UploadedFile $file, string $folderPath, string $subPath = '', ?int $createdBy = null): FmFile

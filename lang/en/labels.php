@@ -48,7 +48,6 @@ return [
     'purge_success' => 'File(s) permanently deleted.',
     'rename_success' => 'File renamed successfully.',
     'folder_created' => 'Folder created successfully.',
-    'move_success' => 'File(s) moved/copied successfully.',
 
     // Views
     'grid_view' => 'Grid View',
@@ -71,9 +70,6 @@ return [
     // Search
     'search_placeholder' => 'Search files...',
 
-    // Selection
-    'items_selected' => 'item(s) selected',
-
     // Rename Modal
     'rename_file' => 'Rename File',
     'new_name' => 'New Name',
@@ -82,14 +78,6 @@ return [
     'folder_name' => 'Folder Name',
     'folder_name_placeholder' => 'my-folder',
     'folder_name_help' => 'Use letters, numbers, hyphens, and underscores only.',
-
-    // Move / Copy Modal
-    'move_files' => 'Move Files',
-    'copy_files' => 'Copy Files',
-    'target_folder' => 'Target Folder',
-    'target_sub_path' => 'Sub-path (optional)',
-    'target_sub_path_placeholder' => 'documents/reports',
-    'target_sub_path_help' => 'Leave empty to move to folder root.',
 
     // Confirmation dialogs
     'trash_title' => 'Move to Trash',
@@ -112,6 +100,43 @@ return [
     'select_file' => 'Select a File',
     'no_file_selected' => 'No file selected',
     'selected_file' => 'Selected file',
-    'click_to_select' => 'Click a file to select it.',
+    'click_to_select' => 'Click a file to select it, double-click to choose.',
     'invalid_folder' => 'The specified folder is not registered in the file manager configuration.',
+
+    // Redesign (2026-09)
+    'cut' => 'Cut',
+    'paste' => 'Paste',
+    'paste_count' => 'Paste :count file(s)',
+    'details' => 'Details',
+    'delete_permanently' => 'Delete permanently',
+    'coming_soon' => 'Coming soon',
+    'clipboard_copy' => '{1} :count file copied to clipboard.|[2,*] :count files copied to clipboard.',
+    'clipboard_cut' => '{1} :count file cut to clipboard.|[2,*] :count files cut to clipboard.',
+    'paste_success' => '{1} :count file pasted.|[2,*] :count files pasted.',
+    'storage' => 'Storage',
+    'path' => 'Path',
+    'files' => 'Files',
+    'folder' => 'Folder',
+    'expand' => 'Expand',
+    'collapse' => 'Collapse',
+    'toggle_folders' => 'Show folders',
+    'sort' => 'Sort',
+    'n_files' => '{1} :count file|[2,*] :count files',
+    'n_folders' => '{1} :count folder|[2,*] :count folders',
+    'selection' => 'Selection',
+    'select_item' => 'Select :name',
+    'more_actions' => 'More actions for :name',
+    'close' => 'Close',
+    'url' => 'URL',
+    'copy_url' => 'Copy URL',
+    'url_copied' => 'URL copied to clipboard.',
+    'dimensions' => 'Dimensions',
+    'created' => 'Created',
+    'uploaded_by' => 'Uploaded by',
+    'location' => 'Location',
+    'in_location' => 'in :path',
+    'no_results' => 'No files match ":q".',
+    'choose' => 'Choose',
+    'not_configured' => 'No storage is configured for the file manager.',
+    'not_configured_help' => 'Run php artisan mod-fm:setup to add one.',
 ];
