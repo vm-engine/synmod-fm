@@ -136,6 +136,7 @@ return [
     'location' => 'Location',
     'in_location' => 'in :path',
     'no_results' => 'No files match ":q".',
+    'search_truncated' => 'Showing the first :count results — refine your search to narrow it down.',
     'choose' => 'Choose',
     'not_configured' => 'No storage is configured for the file manager.',
     'not_configured_help' => 'Run php artisan mod-fm:setup to add one.',

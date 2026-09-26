@@ -55,3 +55,11 @@ it('uses the thumbnail url and image preview for images', function () {
     expect($item['preview'])->toBe('image')
         ->and($item['thumb'])->toBe($file->getThumbnailUrl());
 });
+
+it('builds a nested folder item from a search result path', function () {
+    expect(FmItem::dir('marketing', '2024/banners'))->toMatchArray([
+        'key' => 'marketing/2024/banners',
+        'name' => 'banners',
+        'location' => 'marketing/2024',
+    ])->and(FmItem::dir('', 'a/b')['location'])->toBe('a');
+});

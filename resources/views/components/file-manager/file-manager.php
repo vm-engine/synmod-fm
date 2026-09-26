@@ -632,7 +632,7 @@ new class extends Component
     {
         // No configured root (empty fm.json): never fall back to listing the disk root.
         if ($this->currentFolderConfig === null) {
-            return ['dirs' => [], 'files' => new EloquentCollection];
+            return ['dirs' => [], 'files' => new EloquentCollection, 'truncated' => false];
         }
 
         $service = app(FileManagerService::class);
@@ -641,6 +641,7 @@ new class extends Component
             return [
                 'dirs' => [],
                 'files' => $service->listTrash($this->currentFolder, $this->search, $this->sortBy, $this->sortDir),
+                'truncated' => false,
             ];
         }
 

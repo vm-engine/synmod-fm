@@ -1,6 +1,6 @@
 {{--
     Grid tile for a folder or file (FmItem array).
-    @param array $item  @param string $mode  @param bool $selected  @param bool $cut  @param bool $inTrash
+    @param array $item  @param string $mode  @param bool $selected  @param bool $cut  @param bool $showLocation
 --}}
 <div
     class="fm-tile fm-tone-{{ $item['tone'] }} {{ $selected ? 'is-selected' : '' }} {{ $cut ? 'is-cut' : '' }}"
@@ -46,10 +46,10 @@
     <div class="fm-tile-body">
         <div class="fm-tile-name" title="{{ $item['name'] }}">{{ $item['name'] }}</div>
         <div class="fm-tile-meta">
-            @if ($item['kind'] === 'dir')
-                {{ __('fm::labels.folder') }}
-            @elseif ($inTrash)
+            @if ($showLocation)
                 {{ __('fm::labels.in_location', ['path' => $item['location'] !== '' ? $item['location'] : '/']) }}
+            @elseif ($item['kind'] === 'dir')
+                {{ __('fm::labels.folder') }}
             @else
                 {{ $item['size'] }}
             @endif

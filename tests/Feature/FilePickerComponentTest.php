@@ -179,3 +179,18 @@ it('refuses to pick or select files outside the browsed storage root', function 
 
     expect($component->instance()->pickedFile)->toBeNull();
 });
+
+it('searches subfolders in the picker', function () {
+    Storage::disk('public')->put('fm/public/docs/deep/invoice.pdf', 'x');
+    FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'docs/deep/invoice.pdf',
+        'filename' => 'invoice.pdf', 'original_name' => 'invoice.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'has_thumbnail' => false, 'is_trashed' => false,
+    ]);
+
+    $component = Livewire::actingAs($this->user)->test('fm::file-picker')
+        ->set('search', 'invoice')
+        ->assertSee(__('fm::labels.in_location', ['path' => 'docs/deep']));
+
+    expect(array_column($component->instance()->items, 'name'))->toBe(['invoice.pdf']);
+});

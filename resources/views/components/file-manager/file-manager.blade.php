@@ -91,6 +91,9 @@
                     x-on:contextmenu.prevent="openBlankMenu($event)"
                     x-on:scroll="closeMenu()"
                 >
+                    @if ($this->fileList['truncated'])
+                        <p class="fm-search-note" role="status">{{ __('fm::labels.search_truncated', ['count' => \VmEngine\Fm\Services\FileManagerService::SEARCH_LIMIT]) }}</p>
+                    @endif
                     @if ($items === [])
                         @include('fm::partials.empty', [
                             'search' => $search,
@@ -140,7 +143,7 @@
                                             'item' => $item,
                                             'selected' => $this->isSelected($item),
                                             'cut' => $this->isCut($item),
-                                            'inTrash' => $showTrash,
+                                            'showLocation' => $showTrash || $search !== '',
                                         ])
                                     @endforeach
                                 </tbody>
@@ -159,7 +162,7 @@
                                     'mode' => 'manager',
                                     'selected' => $this->isSelected($item),
                                     'cut' => $this->isCut($item),
-                                    'inTrash' => $showTrash,
+                                    'showLocation' => $showTrash || $search !== '',
                                 ])
                             @endforeach
                         </div>

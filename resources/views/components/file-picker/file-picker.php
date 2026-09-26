@@ -276,7 +276,7 @@ new class extends Component
     {
         // No configured root (empty fm.json): never fall back to listing the disk root.
         if ($this->currentFolderConfig === null) {
-            return ['dirs' => [], 'files' => new EloquentCollection];
+            return ['dirs' => [], 'files' => new EloquentCollection, 'truncated' => false];
         }
 
         $result = app(FileManagerService::class)->listDirectory($this->currentFolder, $this->subPath, false, $this->search);

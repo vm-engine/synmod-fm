@@ -7,6 +7,7 @@
 - FM now owns its styling/behaviour: `resources/dist/fm.css` + `fm.js`, served via `fm.assets` and loaded with Livewire `@assets`; FontAwesome → Phosphor icons.
 - Sidebar Trash lists all trashed files of the storage root (with original location).
 - File picker: click to pick, double-click or **Choose** to select; remembers last folder per locked folder; inline "New folder" popover in the toolbar.
+- **Search covers subfolders**: file manager and picker search the current folder and everything below it (files and folder names), showing each result's location; capped at 100 results with a "refine your search" hint. Adds `FmFile::underPath()` and `FileManagerService::SEARCH_LIMIT`; `listDirectory()` now also returns `truncated`.
 
 ### Added
 - Right-click / ⋯ context menu, clipboard copy/cut/paste (replaces the Move/Copy modal), details drawer, keyboard shortcuts (Space, F2, Del, Ctrl+C/X/V/A, Esc, arrows).

@@ -236,6 +236,23 @@ class FmFile extends Model
     }
 
     /**
+     * Scope: files in a sub-path and all of its descendants (whole root when empty).
+     *
+     * @param  Builder<FmFile>  $query
+     * @return Builder<FmFile>
+     */
+    public function scopeUnderPath(Builder $query, string $folderPath, string $subPath = ''): Builder
+    {
+        $query->where('folder_path', $folderPath);
+
+        if ($subPath !== '') {
+            $query->where('relative_path', 'like', rtrim($subPath, '/').'/%');
+        }
+
+        return $query;
+    }
+
+    /**
      * Scope: search by filename or original name.
      *
      * @param  Builder<FmFile>  $query

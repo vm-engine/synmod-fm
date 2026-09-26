@@ -14,6 +14,9 @@ use VmEngine\SynAuth\Facades\SynAuth;
 
 class FileManagerService
 {
+    /** Max items (folders + files) a search returns; beyond it the user should refine the query. */
+    public const SEARCH_LIMIT = 100;
+
     public function __construct(
         private readonly ThumbnailService $thumbnailService
     ) {}
@@ -21,7 +24,10 @@ class FileManagerService
     /**
      * List contents of a directory: subdirectories and files.
      *
-     * @return array{dirs: array<string>, files: Collection<int, FmFile>}
+     * With a search term, lists matches from the directory and all its descendants
+     * (dirs relative to $subPath, e.g. "2024/invoices"), capped at SEARCH_LIMIT.
+     *
+     * @return array{dirs: array<string>, files: Collection<int, FmFile>, truncated: bool}
      */
     public function listDirectory(string $folderPath, string $subPath = '', bool $showTrash = false, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): array
     {
@@ -35,13 +41,12 @@ class FileManagerService
             $disk->makeDirectory($fullPath);
         }
 
-        // Get subdirectories from storage
-        $storageDirs = $disk->directories($fullPath);
-        $dirs = array_map(fn ($d) => basename($d), $storageDirs);
-        sort($dirs);
+        $searching = $search !== '';
 
         // Get files from DB
-        $query = FmFile::inPath($folderPath, $subPath);
+        $query = $searching
+            ? FmFile::underPath($folderPath, $subPath)->search($search)
+            : FmFile::inPath($folderPath, $subPath);
 
         if ($showTrash) {
             $query->trashed();
@@ -49,17 +54,38 @@ class FileManagerService
             $query->active();
         }
 
-        if ($search !== '') {
-            $query->search($search);
-        }
-
         $allowed = ['filename', 'size', 'extension', 'created_at'];
         $col = in_array($sortBy, $allowed, true) ? $sortBy : 'filename';
-        $dir = $sortDir === 'desc' ? 'desc' : 'asc';
+        $query->orderBy($col, $sortDir === 'desc' ? 'desc' : 'asc');
 
-        $files = $query->orderBy($col, $dir)->get();
+        if (! $searching) {
+            $dirs = array_map(fn ($d) => basename($d), $disk->directories($fullPath));
+            sort($dirs);
 
-        return ['dirs' => $dirs, 'files' => $files];
+            return ['dirs' => $dirs, 'files' => $query->get(), 'truncated' => false];
+        }
+
+        $needle = mb_strtolower($search);
+        $prefixLength = strlen($fullPath) + 1;
+        $dirs = array_values(array_filter(
+            array_map(fn (string $d): string => substr($d, $prefixLength), $disk->allDirectories($fullPath)),
+            fn (string $d): bool => str_contains(mb_strtolower(basename($d)), $needle),
+        ));
+        sort($dirs);
+
+        $truncated = count($dirs) > self::SEARCH_LIMIT;
+        $dirs = array_slice($dirs, 0, self::SEARCH_LIMIT);
+        $remaining = self::SEARCH_LIMIT - count($dirs);
+
+        // Fetch one extra row to detect overflow without a COUNT query.
+        $files = $query->limit($remaining + 1)->get();
+
+        if ($files->count() > $remaining) {
+            $truncated = true;
+            $files = $files->take($remaining)->values();
+        }
+
+        return ['dirs' => $dirs, 'files' => $files, 'truncated' => $truncated];
     }
 
     /**

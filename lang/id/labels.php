@@ -136,6 +136,7 @@ return [
     'location' => 'Lokasi',
     'in_location' => 'di :path',
     'no_results' => 'Tidak ada file yang cocok dengan ":q".',
+    'search_truncated' => 'Menampilkan :count hasil pertama — perjelas pencarian untuk mempersempitnya.',
     'choose' => 'Pilih',
     'not_configured' => 'Belum ada penyimpanan yang dikonfigurasi untuk pengelola file.',
     'not_configured_help' => 'Jalankan php artisan mod-fm:setup untuk menambahkannya.',

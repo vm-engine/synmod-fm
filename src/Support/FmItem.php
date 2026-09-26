@@ -16,16 +16,19 @@ use VmEngine\Fm\Models\FmFile;
 final class FmItem
 {
     /**
+     * @param  string  $name  folder name, or a path relative to $parentSubPath (search results)
      * @return Item
      */
     public static function dir(string $parentSubPath, string $name): array
     {
+        $key = $parentSubPath === '' ? $name : $parentSubPath.'/'.$name;
+
         return [
             'kind' => 'dir',
-            'key' => $parentSubPath === '' ? $name : $parentSubPath.'/'.$name,
-            'name' => $name,
+            'key' => $key,
+            'name' => basename($key),
             'size' => '',
-            'location' => $parentSubPath,
+            'location' => FmPath::parentOf($key),
             'thumb' => null,
             'icon' => 'ph-folder',
             'tone' => 'folder',

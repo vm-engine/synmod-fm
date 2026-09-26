@@ -167,3 +167,64 @@ it('lists every trashed file of a storage root regardless of sub-path', function
 
     expect($names)->toBe(['old.pdf', 'root.pdf']);
 });
+
+function makeSearchFile(string $path): FmFile
+{
+    Storage::disk('public')->put('fm/public/'.$path, 'x');
+
+    return FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => $path,
+        'filename' => basename($path), 'original_name' => basename($path), 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+}
+
+it('searches files and folders in the current folder and below', function () {
+    makeSearchFile('report-root.pdf');
+    makeSearchFile('docs/2024/report-q1.pdf');
+    makeSearchFile('docs/other.pdf');
+    Storage::disk('public')->makeDirectory('fm/public/docs/reports');
+    Storage::disk('public')->makeDirectory('fm/public/misc');
+
+    $result = $this->service->listDirectory('fm/public', '', false, 'report');
+
+    expect($result['dirs'])->toBe(['docs/reports'])
+        ->and($result['files']->pluck('filename')->sort()->values()->all())->toBe(['report-q1.pdf', 'report-root.pdf'])
+        ->and($result['truncated'])->toBeFalse();
+});
+
+it('does not search outside the current sub-path', function () {
+    makeSearchFile('report-root.pdf');
+    makeSearchFile('docs/2024/report-q1.pdf');
+    Storage::disk('public')->makeDirectory('fm/public/archive/reports');
+
+    $result = $this->service->listDirectory('fm/public', 'docs', false, 'REPORT');
+
+    expect($result['dirs'])->toBe([])
+        ->and($result['files']->pluck('filename')->all())->toBe(['report-q1.pdf']);
+});
+
+it('caps search results and flags truncation', function () {
+    foreach (range(1, FileManagerService::SEARCH_LIMIT - 1) as $i) {
+        makeSearchFile("a/hit-{$i}.pdf");
+    }
+    Storage::disk('public')->makeDirectory('fm/public/b/hit-dir-1');
+    Storage::disk('public')->makeDirectory('fm/public/b/hit-dir-2');
+
+    $result = $this->service->listDirectory('fm/public', '', false, 'hit');
+
+    expect($result['dirs'])->toHaveCount(2)
+        ->and($result['files'])->toHaveCount(FileManagerService::SEARCH_LIMIT - 2)
+        ->and($result['truncated'])->toBeTrue();
+});
+
+it('lists only one level and never truncates without a search', function () {
+    makeSearchFile('top.pdf');
+    makeSearchFile('docs/nested.pdf');
+
+    $result = $this->service->listDirectory('fm/public', '');
+
+    expect($result['dirs'])->toBe(['docs'])
+        ->and($result['files']->pluck('filename')->all())->toBe(['top.pdf'])
+        ->and($result['truncated'])->toBeFalse();
+});

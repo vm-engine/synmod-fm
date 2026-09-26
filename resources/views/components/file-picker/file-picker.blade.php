@@ -96,6 +96,9 @@
                         @endif
 
                         <div class="fm-content">
+                            @if ($this->fileList['truncated'])
+                                <p class="fm-search-note" role="status">{{ __('fm::labels.search_truncated', ['count' => \VmEngine\Fm\Services\FileManagerService::SEARCH_LIMIT]) }}</p>
+                            @endif
                             @if ($items === [])
                                 @include('fm::partials.empty', [
                                     'search' => $search,
@@ -112,7 +115,7 @@
                                             'mode' => 'picker',
                                             'selected' => $this->isSelected($item),
                                             'cut' => false,
-                                            'inTrash' => false,
+                                            'showLocation' => $search !== '',
                                         ])
                                     @endforeach
                                 </div>

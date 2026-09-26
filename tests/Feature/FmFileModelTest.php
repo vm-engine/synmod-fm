@@ -162,3 +162,20 @@ it('reports the preview kind from the mime type', function () {
         ->and((new FmFile(['mime_type' => 'video/mp4']))->previewKind())->toBe('video')
         ->and((new FmFile(['mime_type' => 'application/pdf']))->previewKind())->toBeNull();
 });
+
+it('scopes files to a sub-path and everything below it', function () {
+    $make = fn (string $path) => FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => $path,
+        'filename' => basename($path), 'original_name' => basename($path), 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+    $make('root.pdf');
+    $make('docs/a.pdf');
+    $make('docs/2024/b.pdf');
+    $make('docsx/c.pdf');
+
+    expect(FmFile::underPath('fm/public', '')->pluck('filename')->sort()->values()->all())
+        ->toBe(['a.pdf', 'b.pdf', 'c.pdf', 'root.pdf'])
+        ->and(FmFile::underPath('fm/public', 'docs')->pluck('filename')->sort()->values()->all())
+        ->toBe(['a.pdf', 'b.pdf']);
+});

@@ -1,4 +1,4 @@
-{{-- List-view row. @param array $item  @param bool $selected  @param bool $cut  @param bool $inTrash --}}
+{{-- List-view row. @param array $item  @param bool $selected  @param bool $cut  @param bool $showLocation --}}
 <tr
     class="fm-row {{ $selected ? 'is-selected' : '' }} {{ $cut ? 'is-cut' : '' }}"
     tabindex="0"
@@ -38,7 +38,7 @@
     </td>
     <td class="fm-col-type">{{ $item['kind'] === 'dir' ? __('fm::labels.folder') : $item['ext'] }}</td>
     <td>
-        @if ($inTrash && $item['kind'] === 'file')
+        @if ($showLocation)
             {{ __('fm::labels.in_location', ['path' => $item['location'] !== '' ? $item['location'] : '/']) }}
         @else
             {{ $item['size'] !== '' ? $item['size'] : '—' }}

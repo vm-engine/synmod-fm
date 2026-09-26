@@ -354,6 +354,7 @@
 }
 .fm-empty-icon { color: var(--fm-line-strong); font-size: 2.75rem; }
 .fm-empty-title { margin: 0; color: var(--fm-fg-2); font-size: 0.9375rem; font-weight: 500; }
+.fm-search-note { margin: 0 0 0.75rem; color: var(--fm-fg-2); font-size: 0.8125rem; }
 .fm-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
 
 /* ------------------------------------------------------------ grid/tile */

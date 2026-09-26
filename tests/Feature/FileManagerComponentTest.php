@@ -364,3 +364,30 @@ it('ignores id-based actions on files outside the current storage root', functio
     $component->set('selected', [$foreign->id])->call('purgeSelected');
     expect(FmFile::find($foreign->id))->not->toBeNull();
 });
+
+// --- search --------------------------------------------------------------
+
+it('searches subfolders and shows where each result lives', function () {
+    ($this->makeFile)('docs/2024/report-q1.pdf');
+    Storage::disk('public')->makeDirectory('fm/public/archive/reports');
+
+    $component = Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->set('search', 'report')
+        ->assertSee(__('fm::labels.in_location', ['path' => 'docs/2024']))
+        ->assertSee(__('fm::labels.in_location', ['path' => 'archive']))
+        ->assertDontSee(__('fm::labels.search_truncated', ['count' => 100]));
+
+    expect(array_column($component->instance()->items, 'key'))
+        ->toContain('archive/reports')
+        ->and(array_column($component->instance()->items, 'name'))->toContain('report-q1.pdf', 'report.pdf');
+});
+
+it('asks to refine the search when results are capped', function () {
+    foreach (range(1, 101) as $i) {
+        ($this->makeFile)("bulk/hit-{$i}.pdf");
+    }
+
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->set('search', 'hit')
+        ->assertSee(__('fm::labels.search_truncated', ['count' => 100]));
+});
