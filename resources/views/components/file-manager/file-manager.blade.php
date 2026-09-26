@@ -190,11 +190,11 @@
             x-ref="uploadInput"
             x-on:change="onFileInput($event)"
         >
+
+        {{-- Image / video / PDF viewer (teleported; keeps the fmBrowser scope) --}}
+        @include('fm::partials.viewer')
     </div>
     @endif
-
-    {{-- Image Preview --}}
-    <x-synapse-lightbox name="fm-preview" />
 
     {{-- Rename Modal --}}
     <x-synapse-modal

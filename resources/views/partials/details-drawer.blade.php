@@ -16,6 +16,8 @@
                     <img src="{{ $file->getUrl() }}" alt="{{ $file->filename }}">
                 @elseif ($file->isVideo())
                     <video src="{{ $file->getUrl() }}" controls preload="metadata"></video>
+                @elseif ($file->has_thumbnail)
+                    <img src="{{ $file->getThumbnailUrl() }}" alt="{{ $file->filename }}">
                 @else
                     <i class="ph {{ $style['icon'] }}" aria-hidden="true"></i>
                 @endif

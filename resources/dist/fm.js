@@ -89,6 +89,136 @@
 
     const renderThumb = (kind, url, box) => withTimeout(kind === 'video' ? videoThumb(url, box) : pdfThumb(url, box));
 
+    /* ------------------------------------------------ pdf viewer */
+    // All pages of a PDF in a scroll container: placeholders sized from page 1
+    // so scrolling/page counting work immediately; pages near the viewport are
+    // drawn (DPR-sharp) and far ones cleared so long PDFs don't exhaust memory.
+    // ponytail: every placeholder uses page 1's size; mixed-size pages resize
+    // (small scroll jump) when drawn — measure all pages up front if it matters.
+
+    const pdfViewers = new WeakMap();
+
+    const createPdfViewer = (container, url, box, handlers) => {
+        const pages = [];
+        let loadingTask = null;
+        let doc = null;
+        let base = null;
+        let observer = null;
+        let destroyed = false;
+        let fitScale = 1;
+        let scale = 1;
+        let frame = 0;
+
+        const clear = (item) => {
+            if (item.task) item.task.cancel();
+            item.task = null;
+            item.canvas.width = 0;
+            item.canvas.height = 0;
+            item.rendered = false;
+        };
+
+        const draw = async (item) => {
+            if (item.rendered || destroyed) return;
+            item.rendered = true;
+            try {
+                const page = await doc.getPage(item.number);
+                if (!item.rendered || destroyed) return;
+                const viewport = page.getViewport({ scale });
+                const ratio = window.devicePixelRatio || 1;
+                item.el.style.width = viewport.width + 'px';
+                item.el.style.height = viewport.height + 'px';
+                item.canvas.width = Math.floor(viewport.width * ratio);
+                item.canvas.height = Math.floor(viewport.height * ratio);
+                item.task = page.render({
+                    canvas: item.canvas,
+                    viewport,
+                    transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
+                });
+                await item.task.promise;
+            } catch (error) {
+                if (!error || error.name !== 'RenderingCancelledException') item.rendered = false;
+            } finally {
+                item.task = null;
+            }
+        };
+
+        const layout = () => {
+            pages.forEach((item) => {
+                clear(item);
+                item.el.style.width = base.width * scale + 'px';
+                item.el.style.height = base.height * scale + 'px';
+                // Re-observe so visible pages get an intersection callback at the new size.
+                observer.unobserve(item.el);
+                observer.observe(item.el);
+            });
+        };
+
+        const onScroll = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                const middle = container.scrollTop + container.clientHeight / 2;
+                const hit = pages.find((item) => item.el.offsetTop + item.el.offsetHeight > middle);
+                if (hit) handlers.onPage(hit.number);
+            });
+        };
+
+        const ready = (async () => {
+            const pdfjs = await loadPdfjs(box);
+            // destroy() may run while pdf.js is still loading — check before creating the task too.
+            if (destroyed) return;
+            loadingTask = pdfjs.getDocument({ url });
+            doc = await loadingTask.promise;
+            base = (await doc.getPage(1)).getViewport({ scale: 1 });
+            if (destroyed) return;
+            // 100% = fit the viewer width, capped at ~printed-page size so wide screens don't blow pages up.
+            fitScale = Math.max(0.1, Math.min((container.clientWidth - 32) / base.width, 1.5));
+            scale = fitScale;
+            observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    const item = pages[Number(entry.target.dataset.page) - 1];
+                    if (entry.isIntersecting) {
+                        draw(item);
+                    } else {
+                        clear(item);
+                    }
+                });
+            }, { root: container, rootMargin: '100% 0px' });
+            for (let number = 1; number <= doc.numPages; number++) {
+                const el = document.createElement('div');
+                el.className = 'fm-viewer-page';
+                el.dataset.page = String(number);
+                const canvas = document.createElement('canvas');
+                el.append(canvas);
+                container.append(el);
+                pages.push({ number, el, canvas, rendered: false, task: null });
+            }
+            layout();
+            container.addEventListener('scroll', onScroll, { passive: true });
+            handlers.onPages(doc.numPages);
+        })();
+
+        return {
+            ready,
+            setZoom(zoom) {
+                if (!observer || destroyed) return;
+                const position = container.scrollTop / Math.max(1, container.scrollHeight);
+                scale = fitScale * zoom;
+                layout();
+                container.scrollTop = position * container.scrollHeight;
+            },
+            destroy() {
+                destroyed = true;
+                cancelAnimationFrame(frame);
+                container.removeEventListener('scroll', onScroll);
+                if (observer) observer.disconnect();
+                pages.forEach(clear);
+                // pdf.js 6: only the loading task has destroy().
+                if (loadingTask) loadingTask.destroy();
+                container.replaceChildren();
+            },
+        };
+    };
+
     const register = () => {
         window.Alpine.data('fmBrowser', (config) => ({
             config,
@@ -99,6 +229,8 @@
             uploading: false,
             uploadProgress: 0,
             menu: { open: false, x: 0, y: 0, kind: '', key: '', name: '', url: '', preview: '' },
+            viewer: { open: false, items: [], index: 0, kind: '', url: '', name: '', page: 1, pages: 0, zoom: 1, loading: false, error: false },
+            viewerToken: 0,
 
             init() {
                 if (this.config.mode === 'picker') {
@@ -195,9 +327,9 @@
                 this.previewItem(item);
             },
             previewItem(item) {
-                if (item.preview === 'image') {
-                    this.$dispatch('open-lightbox-fm-preview', { url: item.url });
-                } else {
+                if (['image', 'video', 'pdf'].includes(item.preview)) {
+                    this.openViewer(item);
+                } else if (this.config.mode === 'manager') {
                     this.$wire.showDetails(Number(item.key));
                 }
             },
@@ -551,6 +683,158 @@
                 this.$dispatch('notify', { variant: 'danger', title: this.config.labels.error, message });
             },
 
+            /* ---------------------------------------------------- viewer */
+
+            openViewer(item) {
+                // Step through the previewable files of the current listing, in display order.
+                const items = Array.from(this.$root.querySelectorAll('[data-fm-item][data-kind="file"]'))
+                    .filter((el) => el.dataset.preview)
+                    .map((el) => ({ key: el.dataset.key, name: el.dataset.name, url: el.dataset.url, preview: el.dataset.preview }));
+                const index = items.findIndex((entry) => entry.key === String(item.key));
+                this.viewer.items = index === -1
+                    ? [{ key: String(item.key), name: item.name, url: item.url, preview: item.preview }]
+                    : items;
+                this.viewer.index = Math.max(0, index);
+                this.viewerReturnFocus = document.activeElement;
+                this.viewer.open = true;
+                this.showViewerItem();
+                this.$nextTick(() => {
+                    const root = this.viewerRoot();
+                    if (root) root.focus();
+                });
+            },
+            showViewerItem() {
+                this.teardownViewerPdf();
+                const item = this.viewer.items[this.viewer.index];
+                Object.assign(this.viewer, {
+                    kind: item.preview, url: item.url, name: item.name,
+                    page: 1, pages: 0, zoom: 1, loading: false, error: false,
+                });
+                if (item.preview === 'pdf') this.$nextTick(() => this.loadViewerPdf());
+            },
+            loadViewerPdf() {
+                const container = this.viewerPagesEl();
+                if (!container || !this.config.thumbs) return;
+                const token = ++this.viewerToken;
+                const current = () => token === this.viewerToken;
+                const controller = createPdfViewer(container, this.viewer.url, this.config.thumbs, {
+                    onPages: (count) => { if (current()) this.viewer.pages = count; },
+                    onPage: (number) => { if (current()) this.viewer.page = number; },
+                });
+                pdfViewers.set(container, controller);
+                this.viewer.loading = true;
+                controller.ready
+                    .catch(() => { if (current()) this.viewer.error = true; })
+                    .finally(() => { if (current()) this.viewer.loading = false; });
+            },
+            teardownViewerPdf() {
+                this.viewerToken++;
+                const container = this.viewerPagesEl();
+                const controller = container ? pdfViewers.get(container) : null;
+                if (controller) {
+                    controller.destroy();
+                    pdfViewers.delete(container);
+                }
+            },
+            closeViewer() {
+                if (!this.viewer.open) return;
+                this.teardownViewerPdf();
+                this.viewer.open = false;
+                this.viewer.kind = '';
+                this.viewer.url = '';
+                if (this.viewerReturnFocus && this.viewerReturnFocus.isConnected) this.viewerReturnFocus.focus();
+            },
+            viewerPrev() {
+                if (!this.viewerHasPrev) return;
+                this.viewer.index--;
+                this.showViewerItem();
+            },
+            viewerNext() {
+                if (!this.viewerHasNext) return;
+                this.viewer.index++;
+                this.showViewerItem();
+            },
+            viewerZoomIn() {
+                this.setViewerZoom(this.viewer.zoom + 0.25);
+            },
+            viewerZoomOut() {
+                this.setViewerZoom(this.viewer.zoom - 0.25);
+            },
+            setViewerZoom(zoom) {
+                if (!this.viewerIsPdf) return;
+                this.viewer.zoom = Math.min(3, Math.max(0.5, Math.round(zoom * 100) / 100));
+                const container = this.viewerPagesEl();
+                const controller = container ? pdfViewers.get(container) : null;
+                if (controller) controller.setZoom(this.viewer.zoom);
+            },
+            viewerFailed() {
+                this.viewer.error = true;
+            },
+            onViewerKeydown(event) {
+                // Keep keys inside the viewer: grid shortcuts and the picker modal's Escape listener stay untouched.
+                event.stopPropagation();
+                const key = event.key;
+                if (key === 'Escape') {
+                    event.preventDefault();
+                    this.closeViewer();
+                } else if (key === 'ArrowLeft') {
+                    event.preventDefault();
+                    this.viewerPrev();
+                } else if (key === 'ArrowRight') {
+                    event.preventDefault();
+                    this.viewerNext();
+                } else if (key === '+' || key === '=') {
+                    event.preventDefault();
+                    this.viewerZoomIn();
+                } else if (key === '-') {
+                    event.preventDefault();
+                    this.viewerZoomOut();
+                }
+            },
+            onPickerKeydown(event) {
+                if (event.key !== ' ' || this.viewer.open) return;
+                const el = event.target.closest('[data-fm-item][data-kind="file"]');
+                if (!el || !el.dataset.preview) return;
+                event.preventDefault();
+                this.previewItem(el.dataset);
+            },
+            previewFrom(event) {
+                this.previewItem(event.currentTarget.dataset);
+            },
+            viewerRoot() {
+                return document.getElementById('fm-viewer-' + this.$wire.$id);
+            },
+            viewerPagesEl() {
+                const root = this.viewerRoot();
+                return root ? root.querySelector('[data-fm-viewer-pages]') : null;
+            },
+            get viewerIsImage() {
+                return this.viewer.open && this.viewer.kind === 'image' && !this.viewer.error;
+            },
+            get viewerIsVideo() {
+                return this.viewer.open && this.viewer.kind === 'video' && !this.viewer.error;
+            },
+            get viewerIsPdf() {
+                return this.viewer.open && this.viewer.kind === 'pdf' && !this.viewer.error;
+            },
+            get viewerHasPrev() {
+                return this.viewer.index > 0;
+            },
+            get viewerHasNext() {
+                return this.viewer.index < this.viewer.items.length - 1;
+            },
+            get viewerHasPages() {
+                return this.viewerIsPdf && this.viewer.pages > 0;
+            },
+            get viewerPageLabel() {
+                return this.config.labels.pageCounter
+                    .replace(':page', this.viewer.page)
+                    .replace(':total', this.viewer.pages);
+            },
+            get viewerZoomLabel() {
+                return Math.round(this.viewer.zoom * 100) + '%';
+            },
+
             /* ------------------------------------------------ thumbnails */
 
             initThumbs() {
@@ -615,6 +899,7 @@
                 this.windowListeners.forEach(([name, handler]) => window.addEventListener(name, handler));
             },
             destroy() {
+                this.closeViewer();
                 (this.windowListeners || []).forEach(([name, handler]) => window.removeEventListener(name, handler));
                 if (this.thumbObserver) this.thumbObserver.disconnect();
                 if (this.unhookThumbs) this.unhookThumbs();

@@ -37,7 +37,7 @@ it('builds a file item with tone, size, location and preview kind', function () 
         'location' => 'docs',
         'icon' => 'ph-file-pdf',
         'tone' => 'pdf',
-        'preview' => '',
+        'preview' => 'pdf',
         'ext' => 'PDF',
         'thumb' => null,
     ]);
@@ -91,5 +91,5 @@ it('uses the stored thumbnail once a pdf has one', function () {
     $item = FmItem::file($pdf);
 
     expect($item['thumbKind'])->toBe('')
-        ->and($item['thumb'])->toEndWith('/fm/public/brief_thumb.jpg');
+        ->and($item['thumb'])->toEndWith('/fm/public/brief.pdf_thumb.jpg');
 });

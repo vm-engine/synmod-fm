@@ -64,7 +64,7 @@ Type-safe actions: `Read`, `Upload`, `Delete`, `Rename`, `Move`, `Copy`, `Mkdir`
 
 Full storage path = `folder_path + '/' + relative_path`. `getStoragePath()` computes this. URLs are **path-only** (no host) via `parse_url($url, PHP_URL_PATH)` to remain host-agnostic.
 
-`FmFile::isImage()` / `isVideo()` check `mime_type` prefix (`image/`, `video/`) — used to decide thumbnail generation and the tile preview (images render as `<img>`; video/other files show a tinted Phosphor icon; Preview opens the lightbox for images and the details drawer for video).
+`FmFile::isImage()` / `isVideo()` check `mime_type` prefix (`image/`, `video/`) — used to decide thumbnail generation and the tile preview. `previewKind()` (`image`|`video`|`pdf`) drives Preview: Space / double-click / the menu open the full-screen viewer (`fm::partials.viewer`, teleported to `<body>`; PDFs via `createPdfViewer()` in `fm.js` — all pages, lazily drawn, zoom, page counter; ←/→ between previewable files). Other files open the details drawer.
 
 `FileManagerService::upload()` throws `RuntimeException` (since v1.0.9) if `Storage::putFileAs()` returns `false`, instead of silently saving an `FmFile` DB record for a file that was never actually written to disk.
 
@@ -77,7 +77,7 @@ Every user-initiated `FileManagerService` action logs via `SynAuth::logActivity(
 ### Thumbnail Generation
 `ThumbnailService` uses PHP GD (no Intervention Image). Thumbnails are stored alongside the original with `_thumb` suffix (e.g. `photo_thumb.jpg`). PNG/WebP transparency is preserved. Thumbnails are only generated when `extension_loaded('gd')` is true — tests with `Storage::fake()` will skip thumbnail generation since GD cannot decode fake file contents.
 
-PDF/video thumbnails are rendered **in the browser**, not on the server (no Imagick/ffmpeg dependency): `FmItem` sets `thumbKind` (`pdf`|`video`) for eligible files without a thumbnail, the partials emit `data-fm-thumb*`, and `fm.js` renders visible ones (pdf.js page 1 / `<video>` frame, lazy, 2 at a time) and calls `storeThumbnail()` (`BrowsesFolders`) → `ThumbnailService::storeClientThumbnail()`, which accepts only a real JPEG ≤300 KB within 2× the configured box. These thumbnails are always `*_thumb.jpg`. pdf.js (`resources/dist/pdf.min.mjs` + worker, Apache-2.0) is served by `AssetController`.
+PDF/video thumbnails are rendered **in the browser**, not on the server (no Imagick/ffmpeg dependency): `FmItem` sets `thumbKind` (`pdf`|`video`) for eligible files without a thumbnail, the partials emit `data-fm-thumb*`, and `fm.js` renders visible ones (pdf.js page 1 / `<video>` frame, lazy, 2 at a time) and calls `storeThumbnail()` (`BrowsesFolders`) → `ThumbnailService::storeClientThumbnail()`, which accepts only a real JPEG ≤300 KB within 2× the configured box. These thumbnails are always `{filename}_thumb.jpg` (full filename, e.g. `clip.mp4_thumb.jpg`) so `report.pdf`/`report.mp4`/`report.jpg` never collide. pdf.js (`resources/dist/pdf.min.mjs` + worker, Apache-2.0) is served by `AssetController`.
 
 ### Livewire Components (MFC pattern)
 Both components use the **MFC** pattern and share `VmEngine\Fm\Livewire\Concerns\BrowsesFolders` (safe sub-path navigation via `FmPath::clean()`, lazily expanded sidebar tree `folderTree`, `pathSegments`) and the presentational partials in `resources/views/partials/` (toolbar, tree, item-tile, item-row, empty, pill, context-menu, details-drawer). Items are normalised by `VmEngine\Fm\Support\FmItem`; icons/tints come from `FileTypeStyle` (Phosphor `ph-*` + `fm-tone-*`).

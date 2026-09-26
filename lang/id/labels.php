@@ -140,4 +140,10 @@ return [
     'choose' => 'Pilih',
     'not_configured' => 'Belum ada penyimpanan yang dikonfigurasi untuk pengelola file.',
     'not_configured_help' => 'Jalankan php artisan mod-fm:setup untuk menambahkannya.',
+    'preview_unavailable' => 'Pratinjau tidak tersedia',
+    'zoom_in' => 'Perbesar',
+    'zoom_out' => 'Perkecil',
+    'previous' => 'Sebelumnya',
+    'next' => 'Berikutnya',
+    'page_counter' => ':page / :total',
 ];

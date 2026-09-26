@@ -50,7 +50,7 @@ it('stores a browser-rendered jpeg for a pdf', function () {
 
     expect(app(ThumbnailService::class)->storeClientThumbnail($pdf, ($this->jpegDataUrl)()))->toBeTrue();
 
-    Storage::disk('public')->assertExists('fm/public/brief_thumb.jpg');
+    Storage::disk('public')->assertExists('fm/public/brief.pdf_thumb.jpg');
     expect($pdf->fresh()->has_thumbnail)->toBeTrue();
 });
 
@@ -59,7 +59,7 @@ it('stores a browser-rendered jpeg for a video', function () {
 
     expect(app(ThumbnailService::class)->storeClientThumbnail($video, ($this->jpegDataUrl)(400, 225)))->toBeTrue();
 
-    Storage::disk('public')->assertExists('fm/public/clip_thumb.jpg');
+    Storage::disk('public')->assertExists('fm/public/clip.mp4_thumb.jpg');
 });
 
 it('rejects client thumbnails it should not store', function (string $case) {
@@ -81,10 +81,10 @@ it('rejects client thumbnails it should not store', function (string $case) {
 })->with(['image file', 'already has one', 'png payload', 'mislabelled png', 'not base64', 'garbage bytes', 'too many pixels', 'too many bytes']);
 
 it('never overwrites an existing file at the thumbnail path', function () {
-    Storage::disk('public')->put('fm/public/brief_thumb.jpg', 'a real upload, not a thumbnail');
+    Storage::disk('public')->put('fm/public/brief.pdf_thumb.jpg', 'a real upload, not a thumbnail');
     $pdf = ($this->makeFile)('brief.pdf', 'application/pdf');
 
     expect(app(ThumbnailService::class)->storeClientThumbnail($pdf, ($this->jpegDataUrl)()))->toBeFalse()
-        ->and(Storage::disk('public')->get('fm/public/brief_thumb.jpg'))->toBe('a real upload, not a thumbnail')
+        ->and(Storage::disk('public')->get('fm/public/brief.pdf_thumb.jpg'))->toBe('a real upload, not a thumbnail')
         ->and($pdf->fresh()->has_thumbnail)->toBeFalse();
 });

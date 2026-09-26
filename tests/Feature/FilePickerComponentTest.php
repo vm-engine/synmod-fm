@@ -212,3 +212,12 @@ it('stores browser-rendered thumbnails only inside the browsed root', function (
     expect($foreign->fresh()->has_thumbnail)->toBeFalse()
         ->and($this->file->fresh()->has_thumbnail)->toBeTrue();
 });
+
+it('renders the viewer and a preview button for a previewable picked file', function () {
+    Livewire::actingAs($this->user)->test('fm::file-picker')
+        ->assertSeeHtml('data-fm-viewer')
+        ->assertDontSeeHtml('previewFrom($event)')
+        ->call('pick', $this->file->id)
+        ->assertSeeHtml('previewFrom($event)')
+        ->assertSeeHtml('data-preview="pdf"');
+});

@@ -407,7 +407,7 @@ it('stores a browser-rendered thumbnail and renders it', function () {
         ->assertSeeHtml('data-fm-thumb="pdf"')
         ->call('storeThumbnail', $this->file->id, fmJpegDataUrl())
         ->assertDontSeeHtml('data-fm-thumb="pdf"')
-        ->assertSeeHtml('report_thumb.jpg');
+        ->assertSeeHtml('report.pdf_thumb.jpg');
 
     expect($this->file->fresh()->has_thumbnail)->toBeTrue();
 });
@@ -438,4 +438,27 @@ it('passes thumbnail settings and pdf.js urls to the browser', function () {
     Livewire::actingAs($this->user)->test('fm::file-manager')
         ->assertSeeHtml('pdf.min.mjs')
         ->assertSeeHtml('pdf.worker.min.mjs');
+});
+
+// --- viewer --------------------------------------------------------------
+
+it('renders the fm viewer instead of the synapse lightbox', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('data-fm-viewer')
+        ->assertSeeHtml('data-fm-viewer-pages')
+        ->assertDontSeeHtml('open-lightbox-fm-preview')
+        ->assertDontSeeHtml('syn-lightbox');
+});
+
+it('marks pdfs as previewable', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('data-preview="pdf"');
+});
+
+it('shows the stored pdf thumbnail in the details drawer', function () {
+    $this->file->update(['has_thumbnail' => true]);
+
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->call('showDetails', $this->file->id)
+        ->assertSeeHtml('report.pdf_thumb.jpg" alt="report.pdf"');
 });

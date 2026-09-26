@@ -162,7 +162,8 @@ it('reports dimensions only when width and height attributes exist', function ()
 it('reports the preview kind from the mime type', function () {
     expect((new FmFile(['mime_type' => 'image/png']))->previewKind())->toBe('image')
         ->and((new FmFile(['mime_type' => 'video/mp4']))->previewKind())->toBe('video')
-        ->and((new FmFile(['mime_type' => 'application/pdf']))->previewKind())->toBeNull();
+        ->and((new FmFile(['mime_type' => 'application/pdf']))->previewKind())->toBe('pdf')
+        ->and((new FmFile(['mime_type' => 'application/zip']))->previewKind())->toBeNull();
 });
 
 it('scopes files to a sub-path and everything below it', function () {
@@ -194,7 +195,7 @@ it('stores non-image thumbnails as jpg next to the file', function () {
         'mime_type' => 'image/png', 'size' => 1, 'is_trashed' => false,
     ]);
 
-    expect($pdf->getThumbnailPath())->toBe('fm/public/docs/brief_thumb.jpg')
+    expect($pdf->getThumbnailPath())->toBe('fm/public/docs/brief.pdf_thumb.jpg')
         ->and($png->getThumbnailPath())->toBe('fm/public/logo_thumb.png');
 });
 
@@ -209,3 +210,19 @@ it('knows which files get a browser-rendered thumbnail', function (string $mime,
     ['image/png', false],
     ['application/zip', false],
 ]);
+
+it('gives same-named files of different types distinct thumbnail paths', function () {
+    $make = fn (string $name, string $mime): FmFile => new FmFile([
+        'folder_path' => 'fm/public', 'relative_path' => $name, 'filename' => $name,
+        'extension' => pathinfo($name, PATHINFO_EXTENSION), 'mime_type' => $mime,
+    ]);
+
+    $paths = [
+        $make('report.pdf', 'application/pdf')->getThumbnailPath(),
+        $make('report.mp4', 'video/mp4')->getThumbnailPath(),
+        $make('report.jpg', 'image/jpeg')->getThumbnailPath(),
+    ];
+
+    expect($paths)->toBe(['fm/public/report.pdf_thumb.jpg', 'fm/public/report.mp4_thumb.jpg', 'fm/public/report_thumb.jpg'])
+        ->and(array_unique($paths))->toHaveCount(3);
+});

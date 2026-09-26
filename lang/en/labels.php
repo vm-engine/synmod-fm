@@ -140,4 +140,10 @@ return [
     'choose' => 'Choose',
     'not_configured' => 'No storage is configured for the file manager.',
     'not_configured_help' => 'Run php artisan mod-fm:setup to add one.',
+    'preview_unavailable' => 'Preview unavailable',
+    'zoom_in' => 'Zoom in',
+    'zoom_out' => 'Zoom out',
+    'previous' => 'Previous',
+    'next' => 'Next',
+    'page_counter' => ':page / :total',
 ];

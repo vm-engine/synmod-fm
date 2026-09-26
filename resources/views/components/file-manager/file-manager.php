@@ -763,6 +763,7 @@ new class extends Component
                 'error' => __('fm::labels.error'),
                 'success' => __('fm::labels.success'),
                 'uploadFailed' => __('fm::labels.upload_failed'),
+                'pageCounter' => __('fm::labels.page_counter'),
                 'uploadTooLarge' => __('fm::labels.upload_too_large'),
                 'uploadInvalidType' => __('fm::labels.upload_invalid_type'),
                 'urlCopied' => __('fm::labels.url_copied'),

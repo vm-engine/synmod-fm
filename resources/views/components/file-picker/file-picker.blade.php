@@ -1,4 +1,4 @@
-<div x-data="fmBrowser({{ json_encode($this->jsConfig) }})">
+<div x-data="fmBrowser({{ json_encode($this->jsConfig) }})" x-on:keydown="onPickerKeydown($event)">
     @assets
         <link rel="stylesheet" href="{{ \VmEngine\Fm\Http\Controllers\AssetController::url('fm.css') }}">
         <script src="{{ \VmEngine\Fm\Http\Controllers\AssetController::url('fm.js') }}"></script>
@@ -137,6 +137,15 @@
                         @endif
                     </div>
                     <div class="fm-picker-actions">
+                        @if ($picked && $picked->previewKind())
+                            <button class="fm-btn" type="button"
+                                data-key="{{ $picked->id }}"
+                                data-name="{{ $picked->filename }}"
+                                data-url="{{ $picked->getUrl() }}"
+                                data-preview="{{ $picked->previewKind() }}"
+                                x-on:click="previewFrom($event)"
+                            ><i class="ph ph-eye" aria-hidden="true"></i>{{ __('fm::labels.preview') }}</button>
+                        @endif
                         <button class="fm-btn" type="button" x-on:click="closePickerModal()">{{ __('fm::labels.cancel') }}</button>
                         <button class="fm-btn is-primary" type="button" wire:click="choose" @disabled($picked === null)>
                             <i class="ph ph-check" aria-hidden="true"></i>{{ __('fm::labels.choose') }}
@@ -156,4 +165,7 @@
             </div>
         @endif
     </x-synapse-modal>
+
+    {{-- Image / video / PDF viewer (teleported above the modal) --}}
+    @include('fm::partials.viewer')
 </div>

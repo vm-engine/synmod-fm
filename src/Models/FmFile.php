@@ -83,11 +83,13 @@ class FmFile extends Model
      */
     public function getThumbnailPath(): string
     {
-        // Browser-rendered thumbnails (PDF/video) are always JPEG.
-        $ext = $this->canHaveClientThumbnail() ? 'jpg' : $this->extension;
-        $base = pathinfo($this->relative_path, PATHINFO_FILENAME);
+        // Browser-rendered thumbnails (PDF/video) are always JPEG and keep the full
+        // filename ("clip.mp4_thumb.jpg"), so report.pdf / report.mp4 / report.jpg
+        // in one folder never share a thumbnail path.
+        $thumbName = $this->canHaveClientThumbnail()
+            ? basename($this->relative_path).'_thumb.jpg'
+            : pathinfo($this->relative_path, PATHINFO_FILENAME).'_thumb.'.$this->extension;
         $dir = pathinfo($this->relative_path, PATHINFO_DIRNAME);
-        $thumbName = $base.'_thumb.'.$ext;
 
         return $dir !== '.'
             ? $this->folder_path.'/'.$dir.'/'.$thumbName
@@ -190,13 +192,14 @@ class FmFile extends Model
     }
 
     /**
-     * How the UI can preview this file: "image", "video", or null.
+     * How the UI can preview this file: "image", "video", "pdf", or null.
      */
     public function previewKind(): ?string
     {
         return match (true) {
             $this->isImage() => 'image',
             $this->isVideo() => 'video',
+            $this->mime_type === 'application/pdf' => 'pdf',
             default => null,
         };
     }

@@ -116,13 +116,13 @@ it('removes the thumbnail when purging a file', function (string $name, string $
     Storage::disk('public')->assertMissing('fm/public/docs/'.$thumb);
 })->with([
     'image (server thumbnail)' => ['photo.png', 'image/png', 'photo_thumb.png'],
-    'pdf (browser thumbnail)' => ['brief.pdf', 'application/pdf', 'brief_thumb.jpg'],
-    'video (browser thumbnail)' => ['clip.mp4', 'video/mp4', 'clip_thumb.jpg'],
+    'pdf (browser thumbnail)' => ['brief.pdf', 'application/pdf', 'brief.pdf_thumb.jpg'],
+    'video (browser thumbnail)' => ['clip.mp4', 'video/mp4', 'clip.mp4_thumb.jpg'],
 ]);
 
 it('keeps a same-named user file when the purged file has no thumbnail', function () {
     Storage::disk('public')->put('fm/public/brief.pdf', 'content');
-    Storage::disk('public')->put('fm/public/brief_thumb.jpg', 'a real upload, not a thumbnail');
+    Storage::disk('public')->put('fm/public/brief.pdf_thumb.jpg', 'a real upload, not a thumbnail');
 
     $fmFile = FmFile::create([
         'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'brief.pdf',
@@ -132,7 +132,7 @@ it('keeps a same-named user file when the purged file has no thumbnail', functio
 
     $this->service->purge($fmFile);
 
-    Storage::disk('public')->assertExists('fm/public/brief_thumb.jpg');
+    Storage::disk('public')->assertExists('fm/public/brief.pdf_thumb.jpg');
 });
 
 it('renames a file in storage and DB', function () {

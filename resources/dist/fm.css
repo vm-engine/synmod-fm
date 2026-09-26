@@ -703,3 +703,72 @@
 @media (prefers-reduced-motion: reduce) {
     .fm *, .fm *::before, .fm *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------------------------------------------------------------- viewer */
+/* Teleported to <body> (outside .fm), so it carries its own dark tokens. */
+.fm-viewer {
+    --fm-viewer-bg: rgb(16 24 40 / 0.94);
+    --fm-viewer-fg: #fff;
+    --fm-viewer-muted: rgb(255 255 255 / 0.7);
+    --fm-viewer-btn: rgb(255 255 255 / 0.1);
+    --fm-viewer-btn-hover: rgb(255 255 255 / 0.2);
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    background: var(--fm-viewer-bg);
+    color: var(--fm-viewer-fg);
+    outline: none;
+}
+.fm-viewer[x-cloak] { display: none; }
+.fm-viewer-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+}
+.fm-viewer-name { min-width: 0; margin: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.fm-viewer-tools { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.fm-viewer-count, .fm-viewer-zoom-value { color: var(--fm-viewer-muted); font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.fm-viewer-zoom { display: flex; align-items: center; gap: 0.25rem; }
+.fm-viewer-zoom-value { min-width: 3.25rem; text-align: center; }
+.fm-viewer .fm-viewer-btn:not(.btn):not(.btn-icon),
+.fm-viewer .fm-viewer-nav:not(.btn):not(.btn-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: var(--fm-viewer-btn);
+    color: var(--fm-viewer-fg);
+    font-size: 1.125rem;
+    cursor: pointer;
+}
+.fm-viewer .fm-viewer-btn.is-text { width: auto; padding: 0 0.875rem; font-size: 0.875rem; }
+.fm-viewer .fm-viewer-btn:hover, .fm-viewer .fm-viewer-nav:hover { background: var(--fm-viewer-btn-hover); }
+.fm-viewer .fm-viewer-btn:focus-visible, .fm-viewer .fm-viewer-nav:focus-visible { outline: 2px solid var(--fm-viewer-fg); outline-offset: 2px; }
+.fm-viewer-stage { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; padding: 0 3.5rem 1rem; }
+.fm-viewer-img, .fm-viewer-video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fm-viewer-video { background: #000; }
+.fm-viewer-pages { align-self: stretch; width: 100%; overflow: auto; }
+.fm-viewer-page { margin: 0 auto 1rem; background: #fff; box-shadow: 0 2px 12px rgb(0 0 0 / 0.4); }
+.fm-viewer-page canvas { display: block; width: 100%; height: 100%; }
+.fm-viewer-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; color: var(--fm-viewer-muted); font-size: 2rem; }
+.fm-viewer-state p { margin: 0; font-size: 1rem; }
+.fm-viewer .fm-viewer-nav:not(.btn):not(.btn-icon) { position: absolute; top: 50%; z-index: 1; width: 2.75rem; height: 2.75rem; border-radius: 999px; transform: translateY(-50%); }
+.fm-viewer-nav.is-prev { left: 0.5rem; }
+.fm-viewer-nav.is-next { right: 0.5rem; }
+.fm-spin { animation: fm-spin 0.9s linear infinite; }
+@keyframes fm-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+    .fm-viewer-stage { padding: 0 0 0.5rem; }
+    .fm-viewer .fm-viewer-nav:not(.btn):not(.btn-icon) { top: auto; bottom: 1rem; transform: none; }
+}
