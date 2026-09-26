@@ -24,3 +24,9 @@ it('404s for anything outside the whitelist', function (string $file) {
 it('builds a cache-busted url', function () {
     expect(AssetController::url('fm.css'))->toContain('/fm/assets/fm.css?v=');
 });
+
+it('serves the vendored pdf.js module and worker as javascript', function (string $file) {
+    $this->get(route('fm.assets', ['file' => $file]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/javascript; charset=UTF-8');
+})->with(['pdf.min.mjs', 'pdf.worker.min.mjs']);

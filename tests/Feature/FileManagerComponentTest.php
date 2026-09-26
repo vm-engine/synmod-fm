@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use VmEngine\Fm\Config\FmConfig;
@@ -390,4 +391,51 @@ it('asks to refine the search when results are capped', function () {
     Livewire::actingAs($this->user)->test('fm::file-manager')
         ->set('search', 'hit')
         ->assertSee(__('fm::labels.search_truncated', ['count' => 100]));
+});
+
+// --- browser-rendered thumbnails -----------------------------------------
+
+function fmJpegDataUrl(): string
+{
+    $fake = UploadedFile::fake()->image('t.jpg', 100, 140);
+
+    return 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($fake->getPathname()));
+}
+
+it('stores a browser-rendered thumbnail and renders it', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('data-fm-thumb="pdf"')
+        ->call('storeThumbnail', $this->file->id, fmJpegDataUrl())
+        ->assertDontSeeHtml('data-fm-thumb="pdf"')
+        ->assertSeeHtml('report_thumb.jpg');
+
+    expect($this->file->fresh()->has_thumbnail)->toBeTrue();
+});
+
+it('refuses thumbnails for files outside the browsed root', function () {
+    $foreign = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/other', 'relative_path' => 'secret.pdf',
+        'filename' => 'secret.pdf', 'original_name' => 'secret.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->call('storeThumbnail', $foreign->id, fmJpegDataUrl());
+
+    expect($foreign->fresh()->has_thumbnail)->toBeFalse();
+});
+
+it('refuses thumbnails for trashed files', function () {
+    $trashed = ($this->makeFile)('old.pdf', 1, true);
+
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->call('storeThumbnail', $trashed->id, fmJpegDataUrl());
+
+    expect($trashed->fresh()->has_thumbnail)->toBeFalse();
+});
+
+it('passes thumbnail settings and pdf.js urls to the browser', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('pdf.min.mjs')
+        ->assertSeeHtml('pdf.worker.min.mjs');
 });

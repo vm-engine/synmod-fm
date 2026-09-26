@@ -17,6 +17,9 @@ final class AssetController
     private const FILES = [
         'fm.css' => 'text/css; charset=UTF-8',
         'fm.js' => 'application/javascript; charset=UTF-8',
+        // Vendored pdfjs-dist 6.3.289 (legacy build, Apache-2.0 — see pdfjs-LICENSE).
+        'pdf.min.mjs' => 'text/javascript; charset=UTF-8',
+        'pdf.worker.min.mjs' => 'text/javascript; charset=UTF-8',
     ];
 
     public function __invoke(string $file): BinaryFileResponse

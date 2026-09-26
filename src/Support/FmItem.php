@@ -11,7 +11,7 @@ use VmEngine\Fm\Models\FmFile;
  * and fm::partials.item-row partials render. Label-free on purpose — the
  * partials translate ("Folder", "in :path").
  *
- * @phpstan-type Item array{kind: string, key: string, name: string, size: string, location: string, thumb: string|null, icon: string, tone: string, url: string, preview: string, ext: string, date: string}
+ * @phpstan-type Item array{kind: string, key: string, name: string, size: string, location: string, thumb: string|null, thumbKind: string, icon: string, tone: string, url: string, preview: string, ext: string, date: string}
  */
 final class FmItem
 {
@@ -30,6 +30,7 @@ final class FmItem
             'size' => '',
             'location' => FmPath::parentOf($key),
             'thumb' => null,
+            'thumbKind' => '',
             'icon' => 'ph-folder',
             'tone' => 'folder',
             'url' => '',
@@ -52,7 +53,9 @@ final class FmItem
             'name' => $file->filename,
             'size' => $file->getHumanSize(),
             'location' => FmPath::parentOf($file->relative_path),
-            'thumb' => $file->isImage() ? $file->getThumbnailUrl() : null,
+            'thumb' => $file->isImage() || $file->has_thumbnail ? $file->getThumbnailUrl() : null,
+            // "pdf" | "video" → fm.js renders the thumbnail in the browser and stores it.
+            'thumbKind' => $file->has_thumbnail || ! $file->canHaveClientThumbnail() ? '' : ($file->isVideo() ? 'video' : 'pdf'),
             'icon' => $style['icon'],
             'tone' => $style['tone'],
             'url' => $file->getUrl(),

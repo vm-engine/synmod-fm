@@ -100,6 +100,41 @@ it('purges a file from storage and DB', function () {
     Storage::disk('public')->assertMissing('fm/public/delete-me.pdf');
 });
 
+it('removes the thumbnail when purging a file', function (string $name, string $mime, string $thumb) {
+    Storage::disk('public')->put('fm/public/docs/'.$name, 'content');
+    Storage::disk('public')->put('fm/public/docs/'.$thumb, 'thumb');
+
+    $fmFile = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'docs/'.$name,
+        'filename' => $name, 'original_name' => $name, 'extension' => pathinfo($name, PATHINFO_EXTENSION),
+        'mime_type' => $mime, 'size' => 7, 'has_thumbnail' => true, 'is_trashed' => true, 'trashed_at' => now(),
+    ]);
+
+    $this->service->purge($fmFile);
+
+    Storage::disk('public')->assertMissing('fm/public/docs/'.$name);
+    Storage::disk('public')->assertMissing('fm/public/docs/'.$thumb);
+})->with([
+    'image (server thumbnail)' => ['photo.png', 'image/png', 'photo_thumb.png'],
+    'pdf (browser thumbnail)' => ['brief.pdf', 'application/pdf', 'brief_thumb.jpg'],
+    'video (browser thumbnail)' => ['clip.mp4', 'video/mp4', 'clip_thumb.jpg'],
+]);
+
+it('keeps a same-named user file when the purged file has no thumbnail', function () {
+    Storage::disk('public')->put('fm/public/brief.pdf', 'content');
+    Storage::disk('public')->put('fm/public/brief_thumb.jpg', 'a real upload, not a thumbnail');
+
+    $fmFile = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'brief.pdf',
+        'filename' => 'brief.pdf', 'original_name' => 'brief.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 7, 'has_thumbnail' => false, 'is_trashed' => true, 'trashed_at' => now(),
+    ]);
+
+    $this->service->purge($fmFile);
+
+    Storage::disk('public')->assertExists('fm/public/brief_thumb.jpg');
+});
+
 it('renames a file in storage and DB', function () {
     Storage::disk('public')->put('fm/public/old-name.pdf', 'content');
 

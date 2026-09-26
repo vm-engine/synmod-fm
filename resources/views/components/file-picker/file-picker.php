@@ -381,6 +381,7 @@ new class extends Component
             'maxSizeKb' => (int) ($upload['max_size_kb'] ?? 10240),
             'allowedExtensions' => array_values($upload['allowed_extensions'] ?? []),
             'accept' => $this->accept,
+            'thumbs' => $this->thumbnailJsConfig(),
             'labels' => [
                 'cancel' => __('fm::labels.cancel'),
                 'error' => __('fm::labels.error'),

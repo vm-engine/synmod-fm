@@ -63,3 +63,33 @@ it('builds a nested folder item from a search result path', function () {
         'location' => 'marketing/2024',
     ])->and(FmItem::dir('', 'a/b')['location'])->toBe('a');
 });
+
+it('flags pdfs and videos without a thumbnail for browser rendering', function () {
+    $pdf = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'brief.pdf',
+        'filename' => 'brief.pdf', 'original_name' => 'brief.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false, 'has_thumbnail' => false,
+    ]);
+    $video = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'clip.mp4',
+        'filename' => 'clip.mp4', 'original_name' => 'clip.mp4', 'extension' => 'mp4',
+        'mime_type' => 'video/mp4', 'size' => 1, 'is_trashed' => false, 'has_thumbnail' => false,
+    ]);
+
+    expect(FmItem::file($pdf))->toMatchArray(['thumb' => null, 'thumbKind' => 'pdf'])
+        ->and(FmItem::file($video))->toMatchArray(['thumb' => null, 'thumbKind' => 'video'])
+        ->and(FmItem::dir('', 'docs')['thumbKind'])->toBe('');
+});
+
+it('uses the stored thumbnail once a pdf has one', function () {
+    $pdf = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'brief.pdf',
+        'filename' => 'brief.pdf', 'original_name' => 'brief.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false, 'has_thumbnail' => true,
+    ]);
+
+    $item = FmItem::file($pdf);
+
+    expect($item['thumbKind'])->toBe('')
+        ->and($item['thumb'])->toEndWith('/fm/public/brief_thumb.jpg');
+});

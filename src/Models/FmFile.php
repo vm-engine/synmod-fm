@@ -83,7 +83,8 @@ class FmFile extends Model
      */
     public function getThumbnailPath(): string
     {
-        $ext = $this->extension;
+        // Browser-rendered thumbnails (PDF/video) are always JPEG.
+        $ext = $this->canHaveClientThumbnail() ? 'jpg' : $this->extension;
         $base = pathinfo($this->relative_path, PATHINFO_FILENAME);
         $dir = pathinfo($this->relative_path, PATHINFO_DIRNAME);
         $thumbName = $base.'_thumb.'.$ext;
@@ -133,6 +134,14 @@ class FmFile extends Model
     public function isVideo(): bool
     {
         return str_starts_with($this->mime_type, 'video/');
+    }
+
+    /**
+     * Check if the browser renders this file's thumbnail (PDF page 1 / video frame).
+     */
+    public function canHaveClientThumbnail(): bool
+    {
+        return $this->isVideo() || $this->mime_type === 'application/pdf';
     }
 
     /**

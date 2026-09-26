@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use VmEngine\Fm\Config\FmConfig;
@@ -193,4 +194,21 @@ it('searches subfolders in the picker', function () {
         ->assertSee(__('fm::labels.in_location', ['path' => 'docs/deep']));
 
     expect(array_column($component->instance()->items, 'name'))->toBe(['invoice.pdf']);
+});
+
+it('stores browser-rendered thumbnails only inside the browsed root', function () {
+    $fake = UploadedFile::fake()->image('t.jpg', 100, 140);
+    $dataUrl = 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($fake->getPathname()));
+    $foreign = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/other', 'relative_path' => 'secret.pdf',
+        'filename' => 'secret.pdf', 'original_name' => 'secret.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+
+    Livewire::actingAs($this->user)->test('fm::file-picker')
+        ->call('storeThumbnail', $foreign->id, $dataUrl)
+        ->call('storeThumbnail', $this->file->id, $dataUrl);
+
+    expect($foreign->fresh()->has_thumbnail)->toBeFalse()
+        ->and($this->file->fresh()->has_thumbnail)->toBeTrue();
 });

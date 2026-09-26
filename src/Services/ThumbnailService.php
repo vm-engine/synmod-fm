@@ -91,6 +91,73 @@ class ThumbnailService
         }
     }
 
+    /** Upper bound for a decoded browser-rendered thumbnail. */
+    private const CLIENT_MAX_BYTES = 300 * 1024;
+
+    /**
+     * Store a thumbnail the browser rendered for a PDF/video (fm.js).
+     *
+     * The payload is client-controlled, so it must be a JPEG data URL whose
+     * decoded bytes really are a JPEG (core getimagesizefromstring — no GD or
+     * Imagick) within a byte cap and 2× the configured thumbnail box (retina).
+     * Files that already have a thumbnail are left alone.
+     */
+    public function storeClientThumbnail(FmFile $file, string $dataUrl): bool
+    {
+        if ($file->has_thumbnail || ! $file->canHaveClientThumbnail()) {
+            return false;
+        }
+
+        $prefix = 'data:image/jpeg;base64,';
+
+        // Base64 inflates by 4/3 — reject oversized payloads before decoding.
+        if (! str_starts_with($dataUrl, $prefix) || strlen($dataUrl) > strlen($prefix) + (int) ceil(self::CLIENT_MAX_BYTES * 4 / 3) + 4) {
+            return false;
+        }
+
+        $jpeg = base64_decode(substr($dataUrl, strlen($prefix)), true);
+
+        if ($jpeg === false || $jpeg === '' || strlen($jpeg) > self::CLIENT_MAX_BYTES) {
+            return false;
+        }
+
+        $info = @getimagesizefromstring($jpeg);
+        ['width' => $maxW, 'height' => $maxH] = self::clientThumbnailBox();
+
+        if ($info === false || $info[2] !== IMAGETYPE_JPEG || $info[0] > $maxW || $info[1] > $maxH) {
+            return false;
+        }
+
+        $disk = Storage::disk($file->disk);
+        $thumbPath = $file->getThumbnailPath();
+
+        // A file already there is a user upload (e.g. "brief_thumb.jpg"), not ours — never overwrite it.
+        if ($disk->exists($thumbPath)) {
+            return false;
+        }
+
+        $disk->put($thumbPath, $jpeg);
+        $file->has_thumbnail = true;
+        $file->save();
+
+        return true;
+    }
+
+    /**
+     * Largest browser-rendered thumbnail accepted: 2× the configured box (retina).
+     *
+     * @return array{width: int, height: int}
+     */
+    public static function clientThumbnailBox(): array
+    {
+        $imageConfig = FmConfig::getImageConfig();
+
+        return [
+            'width' => 2 * (int) ($imageConfig['thumbnail_width'] ?? 200),
+            'height' => 2 * (int) ($imageConfig['thumbnail_height'] ?? 200),
+        ];
+    }
+
     /**
      * Calculate thumbnail dimensions preserving aspect ratio.
      *

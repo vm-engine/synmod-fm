@@ -756,6 +756,7 @@ new class extends Component
             'canUpload' => $this->canDo('upload'),
             'maxSizeKb' => (int) ($upload['max_size_kb'] ?? 10240),
             'allowedExtensions' => array_values($upload['allowed_extensions'] ?? []),
+            'thumbs' => $this->thumbnailJsConfig(),
             'accept' => '*',
             'labels' => [
                 'cancel' => __('fm::labels.cancel'),

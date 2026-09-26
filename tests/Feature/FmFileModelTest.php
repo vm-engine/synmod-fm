@@ -41,6 +41,7 @@ it('returns correct thumbnail path for image at root', function () {
         'relative_path' => 'photo.jpg',
         'filename' => 'photo.jpg',
         'extension' => 'jpg',
+        'mime_type' => 'image/jpeg',
     ]);
 
     expect($file->getThumbnailPath())->toBe('fm/public/photo_thumb.jpg');
@@ -52,6 +53,7 @@ it('returns correct thumbnail path for image in subdirectory', function () {
         'relative_path' => 'gallery/photo.png',
         'filename' => 'photo.png',
         'extension' => 'png',
+        'mime_type' => 'image/png',
     ]);
 
     expect($file->getThumbnailPath())->toBe('fm/public/gallery/photo_thumb.png');
@@ -179,3 +181,31 @@ it('scopes files to a sub-path and everything below it', function () {
         ->and(FmFile::underPath('fm/public', 'docs')->pluck('filename')->sort()->values()->all())
         ->toBe(['a.pdf', 'b.pdf']);
 });
+
+it('stores non-image thumbnails as jpg next to the file', function () {
+    $pdf = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'docs/brief.pdf',
+        'filename' => 'brief.pdf', 'original_name' => 'brief.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+    $png = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => 'logo.png',
+        'filename' => 'logo.png', 'original_name' => 'logo.png', 'extension' => 'png',
+        'mime_type' => 'image/png', 'size' => 1, 'is_trashed' => false,
+    ]);
+
+    expect($pdf->getThumbnailPath())->toBe('fm/public/docs/brief_thumb.jpg')
+        ->and($png->getThumbnailPath())->toBe('fm/public/logo_thumb.png');
+});
+
+it('knows which files get a browser-rendered thumbnail', function (string $mime, bool $expected) {
+    $file = new FmFile(['mime_type' => $mime]);
+
+    expect($file->canHaveClientThumbnail())->toBe($expected);
+})->with([
+    ['application/pdf', true],
+    ['video/mp4', true],
+    ['video/webm', true],
+    ['image/png', false],
+    ['application/zip', false],
+]);

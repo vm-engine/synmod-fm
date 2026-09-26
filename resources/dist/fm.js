@@ -8,9 +8,87 @@
  *
  * config (json_encoded into x-data by the component):
  *   mode: 'manager' | 'picker', canUpload, maxSizeKb, allowedExtensions[],
- *   accept, labels{}, confirm{} (manager), modalName + pickerKey (picker).
+ *   accept, thumbs{width, height, pdfjsUrl, pdfWorkerUrl}, labels{},
+ *   confirm{} (manager), modalName + pickerKey (picker).
  */
 (() => {
+    /* ------------------------------------------- browser thumbnails */
+    // PDF page 1 (pdf.js) / video frame (<video>) → JPEG data URL, so thumbnails
+    // need no server software. box = { width, height, pdfjsUrl, pdfWorkerUrl }.
+
+    const THUMB_TIMEOUT_MS = 15000;
+    const THUMB_CONCURRENCY = 2;
+    let pdfjsPromise = null;
+
+    const withTimeout = (promise) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('thumbnail timeout')), THUMB_TIMEOUT_MS)),
+    ]);
+
+    const toJpeg = (source, width, height, box) => {
+        if (!width || !height) throw new Error('empty source');
+        const scale = Math.min(1, box.width / width, box.height / height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(source, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.8);
+    };
+
+    const videoThumb = (url, box) => new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.onerror = () => reject(new Error('video decode failed'));
+        video.onloadedmetadata = () => {
+            video.currentTime = Number.isFinite(video.duration) ? Math.min(1, video.duration / 2) : 0;
+        };
+        video.onseeked = () => {
+            try {
+                resolve(toJpeg(video, video.videoWidth, video.videoHeight, box));
+            } catch (error) {
+                reject(error);
+            }
+            video.removeAttribute('src');
+            video.load();
+        };
+        video.src = url;
+    });
+
+    const loadPdfjs = (box) => {
+        pdfjsPromise ??= import(box.pdfjsUrl).then((pdfjs) => {
+            pdfjs.GlobalWorkerOptions.workerSrc = box.pdfWorkerUrl;
+            return pdfjs;
+        });
+        return pdfjsPromise;
+    };
+
+    const pdfThumb = async (url, box) => {
+        const pdfjs = await loadPdfjs(box);
+        // disableAutoFetch + range requests: only the bytes page 1 needs.
+        const loadingTask = pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true });
+        try {
+            const doc = await loadingTask.promise;
+            const page = await doc.getPage(1);
+            const base = page.getViewport({ scale: 1 });
+            const viewport = page.getViewport({ scale: Math.min(box.width / base.width, box.height / base.height) });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            await page.render({ canvas, viewport }).promise;
+            return toJpeg(canvas, canvas.width, canvas.height, box);
+        } finally {
+            // pdf.js 6: only the loading task has destroy() — frees the document and its worker.
+            loadingTask.destroy();
+        }
+    };
+
+    const renderThumb = (kind, url, box) => withTimeout(kind === 'video' ? videoThumb(url, box) : pdfThumb(url, box));
+
     const register = () => {
         window.Alpine.data('fmBrowser', (config) => ({
             config,
@@ -26,6 +104,7 @@
                 if (this.config.mode === 'picker') {
                     this.bindPickerEvents();
                 }
+                this.initThumbs();
             },
 
             /* ---------------------------------------------- navigation */
@@ -472,6 +551,50 @@
                 this.$dispatch('notify', { variant: 'danger', title: this.config.labels.error, message });
             },
 
+            /* ------------------------------------------------ thumbnails */
+
+            initThumbs() {
+                if (!this.config.thumbs || !('IntersectionObserver' in window)) return;
+                // Ids already queued/attempted this page — failures keep their icon, no retry loop.
+                this.thumbTried = new Set();
+                this.thumbQueue = [];
+                this.thumbActive = 0;
+                this.thumbObserver = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting) return;
+                        this.thumbObserver.unobserve(entry.target);
+                        const { fmThumb: kind, fmThumbId: id, fmThumbSrc: url } = entry.target.dataset;
+                        if (this.thumbTried.has(id)) return;
+                        this.thumbTried.add(id);
+                        this.thumbQueue.push({ kind, id, url });
+                        this.pumpThumbs();
+                    });
+                });
+                this.$nextTick(() => this.scanThumbs());
+                // Re-scan after every re-render of this component (navigation, search, uploads).
+                this.unhookThumbs = window.Livewire.hook('morphed', ({ component }) => {
+                    if (component.id === this.$wire.$id) this.scanThumbs();
+                });
+            },
+            scanThumbs() {
+                this.$root.querySelectorAll('[data-fm-thumb]').forEach((el) => {
+                    if (!this.thumbTried.has(el.dataset.fmThumbId)) this.thumbObserver.observe(el);
+                });
+            },
+            pumpThumbs() {
+                while (this.thumbActive < THUMB_CONCURRENCY && this.thumbQueue.length) {
+                    const job = this.thumbQueue.shift();
+                    this.thumbActive++;
+                    renderThumb(job.kind, job.url, this.config.thumbs)
+                        .then((dataUrl) => this.$wire.storeThumbnail(Number(job.id), dataUrl))
+                        .catch((error) => console.debug('[fm] thumbnail skipped', job.id, error))
+                        .finally(() => {
+                            this.thumbActive--;
+                            this.pumpThumbs();
+                        });
+                }
+            },
+
             /* -------------------------------------------------------- picker */
 
             bindPickerEvents() {
@@ -493,6 +616,8 @@
             },
             destroy() {
                 (this.windowListeners || []).forEach(([name, handler]) => window.removeEventListener(name, handler));
+                if (this.thumbObserver) this.thumbObserver.disconnect();
+                if (this.unhookThumbs) this.unhookThumbs();
             },
             openPickerModal() {
                 this.$dispatch('open-modal-' + this.config.modalName);

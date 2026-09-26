@@ -7,6 +7,10 @@ namespace VmEngine\Fm\Livewire\Concerns;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use VmEngine\Fm\Config\FmConfig;
+use VmEngine\Fm\Enums\FmAction;
+use VmEngine\Fm\Http\Controllers\AssetController;
+use VmEngine\Fm\Models\FmFile;
+use VmEngine\Fm\Services\ThumbnailService;
 use VmEngine\Fm\Support\FmPath;
 
 /**
@@ -47,6 +51,42 @@ trait BrowsesFolders
         }
 
         $this->expanded[] = $path;
+    }
+
+    /**
+     * Store a thumbnail fm.js rendered in the browser for a PDF/video.
+     *
+     * Scoped to the browsed root (ids are client-supplied) and requires read
+     * access to it. Only re-renders on success, so the stored thumbnail
+     * replaces the icon; failures stay silent (the icon remains).
+     */
+    public function storeThumbnail(int $id, string $dataUrl): void
+    {
+        $user = auth()->user();
+        $file = FmFile::active()->where('folder_path', $this->currentFolder)->find($id);
+
+        $stored = $user !== null
+            && $file !== null
+            && FmConfig::canUserDo($user, $this->currentFolder, FmAction::Read)
+            && app(ThumbnailService::class)->storeClientThumbnail($file, $dataUrl);
+
+        if (! $stored) {
+            $this->skipRender();
+        }
+    }
+
+    /**
+     * Settings fm.js needs to render thumbnails (the box the server accepts).
+     *
+     * @return array{width: int, height: int, pdfjsUrl: string, pdfWorkerUrl: string}
+     */
+    protected function thumbnailJsConfig(): array
+    {
+        return [
+            ...ThumbnailService::clientThumbnailBox(),
+            'pdfjsUrl' => AssetController::url('pdf.min.mjs'),
+            'pdfWorkerUrl' => AssetController::url('pdf.worker.min.mjs'),
+        ];
     }
 
     /**

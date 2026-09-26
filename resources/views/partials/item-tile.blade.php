@@ -36,7 +36,14 @@
         ><i class="ph ph-dots-three" aria-hidden="true"></i></button>
     @endif
 
-    <div class="fm-tile-thumb">
+    <div
+        class="fm-tile-thumb"
+        @if ($item['thumbKind'] !== '')
+            data-fm-thumb="{{ $item['thumbKind'] }}"
+            data-fm-thumb-id="{{ $item['key'] }}"
+            data-fm-thumb-src="{{ $item['url'] }}"
+        @endif
+    >
         @if ($item['thumb'])
             <img class="fm-tile-img" src="{{ $item['thumb'] }}" alt="" loading="lazy">
         @else

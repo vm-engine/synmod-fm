@@ -12,6 +12,7 @@
 ### Added
 - Right-click / ⋯ context menu, clipboard copy/cut/paste (replaces the Move/Copy modal), details drawer, keyboard shortcuts (Space, F2, Del, Ctrl+C/X/V/A, Esc, arrows).
 - Remembers the last folder across visits (expands only the current folder and its ancestors).
+- **PDF and video thumbnails without server software**: the browser renders PDF page 1 (vendored pdf.js 6.3.289, legacy build, loaded on demand) or a video frame on first view and stores it via `storeThumbnail()` as `*_thumb.jpg` (validated with core `getimagesizefromstring`; JPEG only, ≤300 KB, ≤2× thumbnail size; never overwrites an existing file at the thumbnail path). Permanently deleting a file removes its thumbnail too. Adds `FmFile::canHaveClientThumbnail()`, `ThumbnailService::storeClientThumbnail()`, `FmItem` `thumbKind`.
 - `FmPath`, `FileTypeStyle`, `FmItem` support classes; `FmFile::formatBytes()`, `dimensions()`, `previewKind()`; `FileManagerService::listTrash()`.
 
 ### Fixed

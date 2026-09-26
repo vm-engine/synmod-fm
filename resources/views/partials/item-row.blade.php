@@ -26,7 +26,14 @@
     </td>
     <td>
         <div class="fm-row-name">
-            <span class="fm-row-icon fm-tone-{{ $item['tone'] }}">
+            <span
+                class="fm-row-icon fm-tone-{{ $item['tone'] }}"
+                @if ($item['thumbKind'] !== '')
+                    data-fm-thumb="{{ $item['thumbKind'] }}"
+                    data-fm-thumb-id="{{ $item['key'] }}"
+                    data-fm-thumb-src="{{ $item['url'] }}"
+                @endif
+            >
                 @if ($item['thumb'])
                     <img src="{{ $item['thumb'] }}" alt="" loading="lazy">
                 @else
