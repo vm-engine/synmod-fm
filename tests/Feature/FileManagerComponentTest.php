@@ -462,3 +462,57 @@ it('shows the stored pdf thumbnail in the details drawer', function () {
         ->call('showDetails', $this->file->id)
         ->assertSeeHtml('report.pdf_thumb.jpg" alt="report.pdf"');
 });
+
+// --- compress --------------------------------------------------------------
+
+it('compresses the selection into a zip in the current folder', function () {
+    ($this->makeFile)('docs/inner.pdf');
+
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->set('selected', [$this->file->id])
+        ->set('selectedDirs', ['docs'])
+        ->call('compressSelected')
+        ->assertSet('selected', [])
+        ->assertSet('selectedDirs', [])
+        ->assertDispatched('notify', variant: 'success');
+
+    $zip = FmFile::where('extension', 'zip')->sole();
+    expect($zip->relative_path)->toBe('archive.zip');
+    Storage::disk('public')->assertExists('fm/public/archive.zip');
+});
+
+it('refuses to compress without upload permission', function () {
+    ($this->pinConfig)(['read', 'copy']);
+    $adminRole = Role::factory()->create(['name' => 'Admin', 'slug' => 'admin', 'level' => 1, 'can_access_backend' => true]);
+    $admin = User::factory()->create();
+    $admin->roles()->attach($adminRole);
+
+    Livewire::actingAs($admin)->test('fm::file-manager')
+        ->set('selected', [$this->file->id])
+        ->call('compressSelected')
+        ->assertDispatched('notify', variant: 'danger');
+
+    expect(FmFile::where('extension', 'zip')->exists())->toBeFalse();
+});
+
+it('warns when the selection has nothing to compress', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->set('selectedDirs', ['empty'])
+        ->call('compressSelected')
+        ->assertDispatched('notify', variant: 'warning');
+
+    expect(FmFile::where('extension', 'zip')->exists())->toBeFalse();
+});
+
+it('shows compress actions only with upload permission', function () {
+    Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('menuCompress()');
+
+    ($this->pinConfig)(['read']);
+    $adminRole = Role::factory()->create(['name' => 'Admin', 'slug' => 'admin', 'level' => 1, 'can_access_backend' => true]);
+    $admin = User::factory()->create();
+    $admin->roles()->attach($adminRole);
+
+    Livewire::actingAs($admin)->test('fm::file-manager')
+        ->assertDontSeeHtml('menuCompress()');
+});

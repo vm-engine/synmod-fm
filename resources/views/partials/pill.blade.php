@@ -41,6 +41,11 @@
                 title="{{ $noFiles ? __('fm::labels.coming_soon') : __('fm::labels.cut').' (Ctrl+X)' }}"
             ><i class="ph ph-scissors" aria-hidden="true"></i></button>
         @endif
+        @if ($can['upload'])
+            <button class="fm-pill-btn" type="button" wire:click="compressSelected"
+                aria-label="{{ __('fm::labels.compress') }}" title="{{ __('fm::labels.compress') }}"
+            ><i class="ph ph-file-zip" aria-hidden="true"></i></button>
+        @endif
         @if ($can['delete'])
             <button class="fm-pill-btn is-danger" type="button" x-on:click="confirmTrashSelected()" @disabled($noFiles)
                 aria-label="{{ __('fm::labels.trash') }}"

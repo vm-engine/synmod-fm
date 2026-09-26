@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace VmEngine\Fm\Services;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use VmEngine\Fm\Config\FmConfig;
 use VmEngine\Fm\Models\FmFile;
 use VmEngine\SynAuth\Facades\SynAuth;
+use ZipArchive;
 
 class FileManagerService
 {
@@ -372,6 +374,113 @@ class FileManagerService
                 'file'
             );
         }
+    }
+
+    /**
+     * Zip active files (by id) and everything under the given dirs of $folderPath
+     * into one archive in $subPath. Entry names are relative to $subPath.
+     * Returns null when nothing is left to compress.
+     *
+     * ponytail: runs synchronously in the request; move to a queued job if large folders time out.
+     *
+     * @param  array<int, int>  $fileIds
+     * @param  array<int, string>  $dirs  sub-paths relative to $folderPath
+     */
+    public function compress(array $fileIds, array $dirs, string $folderPath, string $subPath, ?int $createdBy): ?FmFile
+    {
+        $files = FmFile::active()->where('folder_path', $folderPath)->whereIn('id', $fileIds)->get();
+
+        foreach ($dirs as $dir) {
+            $files = $files->merge(
+                FmFile::active()->underPath($folderPath, $dir)->get()
+                    // LIKE treats _ and % as wildcards; confirm the real prefix.
+                    ->filter(fn (FmFile $file): bool => str_starts_with($file->relative_path, $dir.'/'))
+            );
+        }
+
+        $files = $files->unique('id');
+
+        if ($files->isEmpty()) {
+            return null;
+        }
+
+        $single = count($fileIds) + count($dirs) === 1;
+        $base = match (true) {
+            $single && $dirs !== [] => basename($dirs[0]),
+            $single => pathinfo($files->first()->filename, PATHINFO_FILENAME),
+            default => 'archive',
+        };
+        $filename = $this->uniqueFilename($folderPath, $subPath, $base.'.zip');
+        $prefix = $subPath !== '' ? $subPath.'/' : '';
+        $relativePath = $prefix.$filename;
+
+        $tmp = tempnam(sys_get_temp_dir(), 'fmzip');
+
+        try {
+            $zip = new ZipArchive;
+
+            if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Failed to create a temporary zip archive.');
+            }
+
+            foreach ($files as $file) {
+                $contents = Storage::disk($file->disk)->get($file->getStoragePath());
+
+                if ($contents === null) {
+                    continue;
+                }
+
+                $entry = str_starts_with($file->relative_path, $prefix)
+                    ? substr($file->relative_path, strlen($prefix))
+                    : $file->filename;
+                // ponytail: each file is read into memory; fine at the upload size cap, stream if caps grow.
+                $zip->addFromString($entry, $contents);
+            }
+
+            // Every file was missing on disk: an empty archive is never written.
+            if ($zip->numFiles === 0) {
+                $zip->close();
+
+                return null;
+            }
+
+            $zip->close();
+
+            $stored = Storage::disk(FmConfig::getDisk())->putFileAs(
+                $folderPath.($subPath !== '' ? '/'.$subPath : ''),
+                new File($tmp),
+                $filename
+            );
+
+            if ($stored === false) {
+                throw new \RuntimeException("Failed to write archive '{$filename}' to '{$folderPath}'.");
+            }
+
+            $fmFile = FmFile::create([
+                'disk' => FmConfig::getDisk(),
+                'folder_path' => $folderPath,
+                'relative_path' => $relativePath,
+                'filename' => $filename,
+                'original_name' => $filename,
+                'extension' => 'zip',
+                'mime_type' => 'application/zip',
+                'size' => (int) filesize($tmp),
+                'has_thumbnail' => false,
+                'is_trashed' => false,
+                'created_by' => $createdBy,
+            ]);
+        } finally {
+            @unlink($tmp);
+        }
+
+        $this->log(
+            Auth::id(),
+            'fm.file.compress',
+            'Compressed '.$files->count().' file(s) into '.$fmFile->getStoragePath(),
+            'file'
+        );
+
+        return $fmFile;
     }
 
     /**

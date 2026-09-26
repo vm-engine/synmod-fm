@@ -449,6 +449,10 @@
                 this.closeMenu();
                 this.$wire.clipboardCut();
             },
+            menuCompress() {
+                this.closeMenu();
+                this.$wire.compressSelected();
+            },
             menuPaste() {
                 this.closeMenu();
                 this.$wire.paste(this.menu.kind === 'dir' ? this.menu.key : null);

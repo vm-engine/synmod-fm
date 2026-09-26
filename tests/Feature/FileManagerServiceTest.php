@@ -263,3 +263,81 @@ it('lists only one level and never truncates without a search', function () {
         ->and($result['files']->pluck('filename')->all())->toBe(['top.pdf'])
         ->and($result['truncated'])->toBeFalse();
 });
+
+function makeZipSource(string $relativePath, bool $trashed = false): FmFile
+{
+    Storage::disk('public')->put('fm/public/'.$relativePath, 'content of '.$relativePath);
+
+    return FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/public', 'relative_path' => $relativePath,
+        'filename' => basename($relativePath), 'original_name' => basename($relativePath),
+        'extension' => pathinfo($relativePath, PATHINFO_EXTENSION), 'mime_type' => 'application/pdf',
+        'size' => 10, 'is_trashed' => $trashed, 'trashed_at' => $trashed ? now() : null,
+    ]);
+}
+
+/** @return array<int, string> */
+function zipEntries(FmFile $zip): array
+{
+    $tmp = tempnam(sys_get_temp_dir(), 'fmtest');
+    file_put_contents($tmp, Storage::disk('public')->get($zip->getStoragePath()));
+    $archive = new ZipArchive;
+    $archive->open($tmp);
+    $names = [];
+    for ($i = 0; $i < $archive->numFiles; $i++) {
+        $names[] = $archive->getNameIndex($i);
+    }
+    $archive->close();
+    unlink($tmp);
+    sort($names);
+
+    return $names;
+}
+
+it('compresses selected files and folder contents into a zip', function () {
+    $a = makeZipSource('docs/a.pdf');
+    makeZipSource('docs/photos/b.pdf');
+    makeZipSource('docs/photos/sub/c.pdf');
+    makeZipSource('docs/photos/old.pdf', trashed: true);
+    makeZipSource('docs/photos_other/x.pdf'); // sibling with shared prefix
+
+    $zip = $this->service->compress([$a->id], ['docs/photos'], 'fm/public', 'docs', null);
+
+    expect($zip->filename)->toBe('archive.zip')
+        ->and($zip->relative_path)->toBe('docs/archive.zip')
+        ->and($zip->extension)->toBe('zip')
+        ->and($zip->mime_type)->toBe('application/zip')
+        ->and($zip->size)->toBeGreaterThan(0)
+        ->and(zipEntries($zip))->toBe(['a.pdf', 'photos/b.pdf', 'photos/sub/c.pdf']);
+});
+
+it('names a single-item zip after that item and avoids collisions', function () {
+    $a = makeZipSource('report.pdf');
+    Storage::disk('public')->put('fm/public/report.zip', 'existing');
+
+    expect($this->service->compress([$a->id], [], 'fm/public', '', null)->filename)->toBe('report_1.zip')
+        ->and($this->service->compress([], ['docs'], 'fm/public', '', null))->toBeNull();
+
+    makeZipSource('docs/x.pdf');
+
+    expect($this->service->compress([], ['docs'], 'fm/public', '', null)->filename)->toBe('docs.zip');
+});
+
+it('ignores files of another storage root and trashed files when compressing', function () {
+    $trashed = makeZipSource('gone.pdf', trashed: true);
+    $foreign = FmFile::create([
+        'disk' => 'public', 'folder_path' => 'fm/private', 'relative_path' => 'secret.pdf',
+        'filename' => 'secret.pdf', 'original_name' => 'secret.pdf', 'extension' => 'pdf',
+        'mime_type' => 'application/pdf', 'size' => 1, 'is_trashed' => false,
+    ]);
+
+    expect($this->service->compress([$trashed->id, $foreign->id], [], 'fm/public', '', null))->toBeNull();
+});
+
+it('returns null when none of the files to compress exist on disk', function () {
+    $ghost = makeZipSource('ghost.pdf');
+    Storage::disk('public')->delete('fm/public/ghost.pdf');
+
+    expect($this->service->compress([$ghost->id], [], 'fm/public', '', null))->toBeNull()
+        ->and(FmFile::where('extension', 'zip')->exists())->toBeFalse();
+});

@@ -352,6 +352,41 @@ new class extends Component
         $this->listKey++;
     }
 
+    // ------------------------------------------------------------ compress
+
+    /**
+     * Zip the selected files and folders into the current folder. Creating a
+     * file, so it needs the Upload permission.
+     */
+    public function compressSelected(): void
+    {
+        if ($this->showTrash || ! $this->authorizeAction(FmAction::Upload)) {
+            return;
+        }
+
+        $dirs = array_values(array_filter(
+            array_map(fn (string $dir): ?string => FmPath::clean($dir), $this->selectedDirs),
+            fn (?string $dir): bool => $dir !== null && $dir !== ''
+        ));
+        $ids = $this->filesInRoot(array_map('intval', $this->selected))->modelKeys();
+
+        if ($ids === [] && $dirs === []) {
+            return;
+        }
+
+        $zip = app(FileManagerService::class)->compress($ids, $dirs, $this->currentFolder, $this->subPath, auth()->id());
+
+        if ($zip === null) {
+            $this->dispatch('notify', variant: 'warning', title: __('fm::labels.error'), message: __('fm::labels.compress_empty'));
+
+            return;
+        }
+
+        $this->clearSelection();
+        $this->dispatch('notify', variant: 'success', title: __('fm::labels.success'), message: __('fm::labels.compress_success', ['name' => $zip->filename]));
+        $this->listKey++;
+    }
+
     // ------------------------------------------------------------- details
 
     public function showDetails(int $id): void

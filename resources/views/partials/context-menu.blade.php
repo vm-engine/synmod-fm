@@ -43,6 +43,11 @@
                     <i class="ph ph-scissors" aria-hidden="true"></i>{{ __('fm::labels.cut') }}<span class="fm-menu-kbd">Ctrl X</span>
                 </button>
             @endif
+            @if ($can['upload'])
+                <button class="fm-menu-item" type="button" role="menuitem" x-on:click="menuCompress()">
+                    <i class="ph ph-file-zip" aria-hidden="true"></i>{{ __('fm::labels.compress') }}
+                </button>
+            @endif
             @if ($can['delete'])
                 <div class="fm-menu-sep"></div>
                 <button class="fm-menu-item is-danger" type="button" role="menuitem" x-on:click="menuTrash()">
@@ -65,6 +70,11 @@
             @if ($can['copy'] || $can['move'])
                 <button class="fm-menu-item" type="button" role="menuitem" :disabled="!hasClipboard" x-on:click="menuPaste()">
                     <i class="ph ph-clipboard" aria-hidden="true"></i>{{ __('fm::labels.paste') }}<span class="fm-menu-kbd">Ctrl V</span>
+                </button>
+            @endif
+            @if ($can['upload'])
+                <button class="fm-menu-item" type="button" role="menuitem" x-on:click="menuCompress()">
+                    <i class="ph ph-file-zip" aria-hidden="true"></i>{{ __('fm::labels.compress') }}
                 </button>
             @endif
             <div class="fm-menu-sep"></div>
