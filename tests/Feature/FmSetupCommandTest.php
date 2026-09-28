@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use VmEngine\Fm\Config\FmConfig;
 
 beforeEach(function () {
@@ -31,7 +32,7 @@ afterEach(function () {
 });
 
 it('creates fm.json with provided values', function () {
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 'public')
         ->expectsQuestion('Thumbnail width (px)', '150')
         ->expectsQuestion('Thumbnail height (px)', '150')
@@ -64,7 +65,7 @@ it('creates fm.json with provided values', function () {
 });
 
 it('creates fm.json with multiple folders', function () {
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 'public')
         ->expectsQuestion('Thumbnail width (px)', '200')
         ->expectsQuestion('Thumbnail height (px)', '200')
@@ -90,7 +91,7 @@ it('creates fm.json with multiple folders', function () {
 });
 
 it('uses custom disk when other is selected', function () {
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 'other')
         ->expectsQuestion('Custom disk name', 'my_disk')
         ->expectsQuestion('Thumbnail width (px)', '200')
@@ -121,7 +122,7 @@ it('loads existing values as defaults when updating', function () {
 
     file_put_contents($this->configPath, json_encode($existing));
 
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 's3')
         ->expectsQuestion('Thumbnail width (px)', '300')
         ->expectsQuestion('Thumbnail height (px)', '300')
@@ -152,7 +153,7 @@ it('replaces existing folders when replace option is chosen', function () {
 
     file_put_contents($this->configPath, json_encode($existing));
 
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 'public')
         ->expectsQuestion('Thumbnail width (px)', '200')
         ->expectsQuestion('Thumbnail height (px)', '200')
@@ -173,7 +174,7 @@ it('replaces existing folders when replace option is chosen', function () {
 });
 
 it('saves valid json to the correct path', function () {
-    $this->artisan('mod-fm:setup')
+    $this->artisan('fm:setup')
         ->expectsQuestion('Storage disk', 'local')
         ->expectsQuestion('Thumbnail width (px)', '200')
         ->expectsQuestion('Thumbnail height (px)', '200')
@@ -192,4 +193,11 @@ it('saves valid json to the correct path', function () {
 
     expect($decoded)->not->toBeNull()
         ->and($decoded)->toHaveKeys(['disk', 'folders', 'image', 'upload', 'trash']);
+});
+
+it('keeps mod-fm:setup as a deprecated alias of fm:setup', function () {
+    $commands = Artisan::all();
+
+    expect($commands)->toHaveKeys(['fm:setup', 'mod-fm:setup'])
+        ->and($commands['mod-fm:setup'])->toBe($commands['fm:setup']);
 });

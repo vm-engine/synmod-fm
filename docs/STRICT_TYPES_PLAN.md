@@ -1,11 +1,12 @@
 # Strict Types Plan — synmod-fm
 
-Same pattern as `packages/synapse` (done — see that package's `phpstan.neon`, now level 6, 0 errors, 503 tests green). Not implemented here yet — inventory only.
+> **Status (2026-09-27): done.** Every tracked PHP file declares `strict_types`, and the package's `phpstan.neon` passes level 7 (Larastan, zero ignores, no baseline). Kept for history.
+
+Same pattern as `packages/synapse`.
 
 ## Scope
 
 - 24 in-repo PHP files, 10 missing `declare(strict_types=1)` — mostly `routes/*.php` and `lang/*/*.php` (1 each), no test/model concentration like the other modules.
-- No `phpstan.neon` in this package — run from the main Laravel project root against its `phpstan.neon` (level 7, already scans `packages/`).
 - Smallest, lowest-risk module in this batch: no `src/Services` or `src/Livewire` files in the missing-declare list, so this is close to purely mechanical.
 
 ## Steps (mirror the synapse execution)
@@ -18,4 +19,4 @@ Same pattern as `packages/synapse` (done — see that package's `phpstan.neon`, 
 
 ## Out of scope for this doc
 
-Actually applying the fixes — inventory only. (See also `docs/SEMANTIC_CSS_PLAN.md` in this module for the still-pending CSS follow-up on `file-manager.blade.php`/`file-picker.blade.php`, unrelated to this plan.)
+Actually applying the fixes — inventory only. 

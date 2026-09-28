@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     // Page
     'file_manager' => 'File Manager',
@@ -142,7 +144,7 @@ return [
     'search_truncated' => 'Showing the first :count results — refine your search to narrow it down.',
     'choose' => 'Choose',
     'not_configured' => 'No storage is configured for the file manager.',
-    'not_configured_help' => 'Run php artisan mod-fm:setup to add one.',
+    'not_configured_help' => 'Run php artisan fm:setup to add one.',
     'preview_unavailable' => 'Preview unavailable',
     'zoom_in' => 'Zoom in',
     'zoom_out' => 'Zoom out',

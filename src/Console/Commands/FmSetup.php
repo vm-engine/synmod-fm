@@ -14,7 +14,14 @@ use function Laravel\Prompts\text;
 
 class FmSetup extends Command
 {
-    protected $signature = 'mod-fm:setup';
+    protected $signature = 'fm:setup';
+
+    /**
+     * Deprecated pre-3.x name, kept so existing scripts keep working.
+     *
+     * @var array<int, string>
+     */
+    protected $aliases = ['mod-fm:setup'];
 
     protected $description = 'Interactive setup wizard to create or update the fm.json configuration file';
 

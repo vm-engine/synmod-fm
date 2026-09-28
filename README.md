@@ -4,20 +4,25 @@ File Manager module for [Laravel Synapse](https://github.com/vm-engine/synapse).
 
 **Package:** `vm-engine/synmod-fm`
 **Module ID:** `fm`
-**Requires:** PHP 8.2+, Laravel 12, Livewire 4, `vm-engine/synapse` ^2.1, `vm-engine/synapps-auth` ^2.0
+**Requires:** PHP 8.2+, Laravel 12, Livewire 4, `vm-engine/synapse` ^3.0, `vm-engine/synapps-auth` ^2.0
 
 ---
 
 ## Features
 
-- **Backend File Manager** — grid and list views, drag-and-drop upload, search, sort by name/size/type/date, bulk selection with move/copy/trash, rename, create folder, image preview modal
+- **Backend File Manager** — sidebar folder tree (lazy expand, Trash pinned), grid and list views, drag-and-drop upload, sort by name/size/type/date, rename, create folder, details drawer; remembers the last folder across visits
+- **Recursive Search** — searches the current folder and everything below it (file and folder names), showing each result's location; capped at `FileManagerService::SEARCH_LIMIT` (100) results with a "refine your search" hint
+- **Context Menu & Clipboard** — right-click / ⋯ menu on every item, copy/cut/paste between folders (replaces the old Move/Copy modal), floating selection pill (name · size · dimensions, or count · total size)
+- **Keyboard Shortcuts** — Space (preview), F2 (rename), Del (trash, or purge in Trash), Ctrl/⌘+C/X/V/A, arrows (move focus), Esc (close menu/drawer, then clear selection)
+- **Full-Screen Viewer** — images, videos and PDFs (Space / double-click / Preview): PDFs render all pages lazily with page counter and zoom (50–300%); ←/→ steps through the previewable files of the listing; Esc closes
+- **Compress to .zip** — zips the selected files and folders into the current folder (context menu or selection pill; requires the Upload permission)
 - **Per-Folder ACL** — permissions configured in `synapps/config/fm.json`, not the standard Synapse ACL system — each folder declares which roles may `read`/`upload`/`delete`/`rename`/`move`/`copy`/`mkdir` within it; dev users bypass all checks
 - **Soft-Delete Trash** — trashed files are hidden, not removed, until purged (manually or via a scheduled command you wire up) after a configurable number of days
-- **Thumbnails** — GD-based (no Intervention Image dependency); PNG/WebP transparency preserved; skipped automatically when the `gd` extension isn't loaded
-- **Image & Video Previews** — SVGs and un-thumbnailed images render as real `<img>` previews in grid/list views; video files show a `fa-circle-play` icon placeholder instead of a generic file icon
-- **Reusable `file-picker` Component** — embeddable modal picker for any form; can be locked to a single folder, filtered by MIME type/extension (server-side), and scoped so multiple pickers can coexist on one page
+- **Thumbnails** — images via GD on the server (no Intervention Image dependency; PNG/WebP transparency preserved; skipped when the `gd` extension isn't loaded); PDFs and videos rendered **in the browser** (pdf.js / `<video>` frame) on first view and stored server-side — no Imagick/ffmpeg required
+- **Image Previews** — SVGs and un-thumbnailed images render as real `<img>` previews; other files show a tinted file-type tile (Phosphor icons)
+- **Reusable `file-picker` Component** — embeddable modal picker for any form (click to pick, double-click or **Choose** to select, inline "New folder", full-screen viewer); can be locked to a single folder, filtered by MIME type/extension (server-side), and scoped so multiple pickers can coexist on one page
 - **TinyMCE Integration** — `resources/js/fm-tinymce.js` wires the picker into TinyMCE's image/media insertion flow
-- **Activity Logging** — every user-initiated action (upload, trash, restore, purge, rename, move, copy, folder create) is recorded via `synapps-auth`'s activity log
+- **Activity Logging** — every user-initiated action (upload, trash, restore, purge, rename, move, copy, compress, folder create) is recorded via `synapps-auth`'s activity log
 - **API Upload & Streaming** — `POST /api/fm/upload` and `GET /api/fm/stream/{id}`, both Sanctum-authenticated, for server-to-server uploads and protected-disk file serving
 - **Host-Agnostic URLs** — file/thumbnail URLs are path-only (no hardcoded `APP_URL`), so they work correctly behind reverse proxies or when the app domain changes
 
@@ -52,7 +57,7 @@ php artisan migrate
 Run the interactive setup wizard to create (or update) `synapps/config/fm.json`:
 
 ```bash
-php artisan mod-fm:setup
+php artisan fm:setup
 ```
 
 This prompts for the storage disk, thumbnail dimensions, max upload size, allowed extensions, trash auto-purge days, and lets you add/edit folders with per-role permissions. Re-running it updates the existing file without discarding other keys.
@@ -65,7 +70,7 @@ This prompts for the storage disk, thumbnail dimensions, max upload size, allowe
     "folders": [
         {
             "path": "fm/public",
-            "label": "Public Files",
+            "name": "Public Files",
             "permissions": {
                 "admin": ["read", "upload", "delete", "rename", "move", "copy", "mkdir"],
                 "editor": ["read", "upload"]
@@ -95,7 +100,7 @@ Route::livewire('/', 'fm::file-manager')->name('index')
     ->middleware('can-access:fm.manage');
 ```
 
-There are no frontend (public) routes — `routes/web.php` is intentionally empty (required to exist for Synapse module compatibility).
+`routes/web.php` only serves the package-owned assets — `GET /fm/assets/{file}` (route `fm.assets`, `AssetController`) delivers `fm.css`, `fm.js` and the vendored pdf.js build from `resources/dist/`. The components load them via Livewire `@assets`, so the host app needs no build step for the file manager.
 
 ---
 
@@ -130,7 +135,7 @@ Type-safe action values: `Read`, `Upload`, `Delete`, `Rename`, `Move`, `Copy`, `
 
 Full backend file browser (registered automatically, mounted at `/admin/fm`). MFC pattern — `file-manager.php` (logic) + `file-manager.blade.php` (template) in the same directory.
 
-Handles: folder navigation, search, sort, grid/list toggle, trash toggle, bulk select, upload, trash/restore/purge (single + bulk), rename, create folder, move/copy (single + bulk), breadcrumbs. All actions are gated per-folder via `FmConfig::canUserDo()` before executing.
+Handles: folder tree + breadcrumbs, recursive search, sort, grid/list toggle, Trash view, bulk select, upload, trash/restore/purge (single + bulk), rename, create folder, clipboard copy/cut/paste, compress, details drawer and the full-screen viewer. All actions are gated per-folder via `FmConfig::canUserDo()` before executing, and id-based actions only load files from the currently browsed storage root.
 
 ### `<livewire:fm::file-picker />`
 
@@ -155,6 +160,8 @@ Embeddable modal picker for use inside any form. `#[Modelable]` — bind with `w
 | `accept` | string | MIME/extension filter applied **server-side**: wildcard (`image/*`, `video/*`), extension list (`.jpg,.png`), exact MIME type, or `*` (default, no filter) |
 | `pickerKey` | string | Scopes the `fm:open-picker` / `fm:file-selected` browser events so multiple pickers can coexist on the same page |
 | `label` | string | Label displayed above the input |
+
+In the picker, click marks a file, double-click or **Choose** selects it, and Space or the Preview button opens the full-screen viewer. When locked to a `folder`, the picker remembers the last sub-folder visited.
 
 Opening a picker programmatically (e.g. from a TinyMCE toolbar button or a custom Alpine component):
 
@@ -202,7 +209,7 @@ Checks `FmAction::Upload` on `folder_path` for the authenticated user before sto
     "url": "/storage/fm/public/report.pdf",
     "thumbnail_url": "/storage/fm/public/report.pdf",
     "size": 204800,
-    "human_size": "200.0 KB",
+    "human_size": "200 KB",
     "mime_type": "application/pdf"
 }
 ```
@@ -222,7 +229,8 @@ use VmEngine\Fm\Services\FileManagerService;
 
 $service = app(FileManagerService::class);
 
-$service->listDirectory(string $folderPath, string $subPath = '', bool $showTrash = false, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): array; // ['dirs' => [...], 'files' => Collection]
+$service->listDirectory(string $folderPath, string $subPath = '', bool $showTrash = false, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): array; // ['dirs' => [...], 'files' => Collection, 'truncated' => bool]; a search is recursive, capped at FileManagerService::SEARCH_LIMIT
+$service->listTrash(string $folderPath, string $search = '', string $sortBy = 'filename', string $sortDir = 'asc'): Collection; // all trashed files under a storage root
 $service->upload(UploadedFile $file, string $folderPath, string $subPath = '', ?int $createdBy = null): FmFile;
 $service->delete(FmFile $file): void;      // soft delete (trash)
 $service->restore(FmFile $file): void;
@@ -230,6 +238,7 @@ $service->purge(FmFile $file): void;       // permanent delete (storage + thumbn
 $service->rename(FmFile $file, string $newName): FmFile;
 $service->move(array $fileIds, string $targetFolderPath, string $targetSubPath = ''): void;
 $service->copy(array $fileIds, string $targetFolderPath, string $targetSubPath = ''): void;
+$service->compress(array $fileIds, array $dirs, string $folderPath, string $subPath, ?int $createdBy): ?FmFile; // null when nothing on disk to zip
 $service->createFolder(string $parentFolderPath, string $subPath, string $name): void;
 $service->getUrl(FmFile $file): string;
 $service->purgeExpiredTrash(): int;        // purges everything past fm.json's trash.auto_purge_days; returns count purged
@@ -238,6 +247,8 @@ $service->purgeExpiredTrash(): int;        // purges everything past fm.json's t
 `upload()` throws `RuntimeException` if the underlying disk write fails (`Storage::putFileAs()` returns `false`), instead of silently creating an `FmFile` DB record for a file that was never actually written.
 
 **Filenames are made unique automatically** — uploading/moving/copying a file whose name already exists in the target path appends `_1`, `_2`, etc., rather than overwriting.
+
+`compress()` zips the given files and directories (recursively, active files only; entry paths relative to the current folder) into `{name}.zip` for a single item or `archive.zip` for several, saved in the current folder.
 
 **There is no bundled scheduled command for `purgeExpiredTrash()`** — call it from your own scheduled command if you want automatic trash cleanup, e.g.:
 
@@ -259,6 +270,7 @@ Every write method above logs via `SynAuth::logActivity()` (module `fm`), throug
 | `fm.file.rename` | `file` | includes old → new name |
 | `fm.file.move` | `file` | one summary entry per batch (target path + file list), not one per file |
 | `fm.file.copy` | `file` | same batch-summary behavior |
+| `fm.file.compress` | `file` | file count + archive path |
 | `fm.folder.create` | `folder` | |
 
 ---
@@ -267,10 +279,20 @@ Every write method above logs via `SynAuth::logActivity()` (module `fm`), throug
 
 GD-based thumbnail generation (no Intervention Image dependency) — called automatically by `FileManagerService::upload()`/`copy()` for image files.
 
-- Thumbnails are stored alongside the original with a `_thumb` suffix (e.g. `photo_thumb.jpg`)
+- Image thumbnails are stored alongside the original with a `_thumb` suffix (e.g. `photo_thumb.jpg`)
 - PNG/WebP transparency is preserved
 - Dimensions come from `fm.json`'s `image.thumbnail_width` / `image.thumbnail_height`
 - Silently skipped if `extension_loaded('gd')` is `false` — in tests using `Storage::fake()`, thumbnail generation is skipped since GD cannot decode fake file contents
+- Permanently deleting a file (`purge()`) removes its thumbnail too
+
+### Browser-rendered PDF & video thumbnails
+
+PDFs and videos get thumbnails without any server software. For eligible files without a thumbnail (`FmFile::canHaveClientThumbnail()`), `FmItem` sets `thumbKind` (`pdf`|`video`); `fm.js` renders the visible ones lazily (pdf.js page 1 or a `<video>` frame, two at a time) and sends a JPEG data URL to the component's `storeThumbnail()`, which calls `ThumbnailService::storeClientThumbnail(FmFile $file, string $dataUrl): bool`.
+
+- Accepted only if it is a real JPEG (checked with `getimagesizefromstring`), ≤ 300 KB and within 2× the configured thumbnail box
+- Stored as `{filename}_thumb.jpg` (e.g. `report.pdf_thumb.jpg`), so `report.pdf` / `report.mp4` / `report.jpg` never share a thumbnail
+- Never overwrites an existing file at the thumbnail path
+- pdf.js (6.3.289 legacy build, Apache-2.0) is vendored in `resources/dist/` and loaded on demand
 
 ---
 
@@ -297,10 +319,15 @@ Full storage path = `folder_path + '/' + relative_path`, computed by `getStorage
 | Method | Description |
 |---|---|
 | `getUrl()` / `getThumbnailUrl()` | Path-only public URL (host-agnostic); thumbnail URL falls back to the file URL when `has_thumbnail` is `false` |
+| `getThumbnailPath()` | `_thumb` path for images, `{filename}_thumb.jpg` for browser-rendered PDF/video thumbnails |
 | `isImage()` / `isVideo()` | Checks `mime_type` prefix (`image/`, `video/`) |
-| `getHumanSize()` | e.g. `"200.0 KB"` |
+| `canHaveClientThumbnail()` | PDF or video — eligible for a browser-rendered thumbnail |
+| `previewKind()` | `image` \| `video` \| `pdf` \| `null` — drives the full-screen viewer |
+| `getHumanSize()` / `formatBytes(int)` | e.g. `"200 KB"`, `"1.5 MB"` (trailing `.0` dropped) |
+| `dimensions()` | `"W×H"` when `width`/`height` attributes exist, else `null` (the table has no such columns yet, so currently always `null`) |
 | `scopeActive()` / `scopeTrashed()` | Filter by `is_trashed` |
 | `scopeInPath($folderPath, $subPath = '')` | Files directly within a folder/sub-path (non-recursive) |
+| `scopeUnderPath($folderPath, $subPath = '')` | Files within a folder/sub-path and all its sub-directories (used by search and compress) |
 | `scopeSearch($q)` | Matches `filename` or `original_name` |
 
 ---
@@ -320,7 +347,7 @@ Tests use `Storage::fake('public')` and reset `FmConfig`'s in-memory cache in `b
 ## Code Quality
 
 ```bash
-# From the main Laravel project root — static analysis FIRST, then Pint
-vendor/bin/phpstan analyse packages/synmod-fm/src --level=5
+# From the main Laravel project root — static analysis FIRST, then Pint (level 7 via the package gate)
+vendor/bin/phpstan analyse packages/synmod-fm/src -c packages/synmod-fm/phpstan.neon --memory-limit=1G
 vendor/bin/pint packages/synmod-fm/
 ```

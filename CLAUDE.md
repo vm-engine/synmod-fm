@@ -12,11 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Run all tools from the **main Laravel project root** (`/srv/www/synapse/`), not from inside this package:
+Run all tools from the **main Laravel project root** (`/srv/www/synapsev3/`), not from inside this package:
 
 ```bash
 # Static analysis (run BEFORE pint) — level 7 via the package gate
-vendor/bin/phpstan analyse packages/synmod-fm/src -c packages/synmod-fm/phpstan.neon
+vendor/bin/phpstan analyse packages/synmod-fm/src -c packages/synmod-fm/phpstan.neon --memory-limit=1G
 
 # Code style
 vendor/bin/pint packages/synmod-fm/
@@ -72,6 +72,7 @@ Full storage path = `folder_path + '/' + relative_path`. `getStoragePath()` comp
 Every user-initiated `FileManagerService` action logs via `SynAuth::logActivity()` (module `fm`), through a private `log()` helper that silently no-ops when there's no user context (unauthenticated API uploads, the scheduled trash-purge command):
 - `fm.file.upload` / `fm.file.trash` / `fm.file.restore` / `fm.file.purge` / `fm.file.rename` (old → new name) — feature `file`
 - `fm.file.move` / `fm.file.copy` — one summary entry per batch (target path + file list), not per-file
+- `fm.file.compress` — file count + archive path
 - `fm.folder.create` — feature `folder`
 
 ### Thumbnail Generation
@@ -110,3 +111,6 @@ Package-owned `resources/dist/fm.css` + `fm.js` (Alpine.data `fmBrowser`, CSP-sa
 
 ### Tests
 Tests use `Storage::fake('public')` and reset `FmConfig` cache via `ReflectionProperty` in `beforeEach`. Always use `RefreshDatabase` when creating `FmFile` records.
+
+### Compress
+`FileManagerService::compress($fileIds, $dirs, $folderPath, $subPath, $createdBy)` zips files + directories (recursive via `scopeUnderPath`, active files only, entry paths relative to the current folder) with `ZipArchive` into `{name}.zip` (single item) or `archive.zip`, saved in the current folder with the usual `_1` collision suffix. Returns `null` when none of the selected files exist on disk (the component shows a "nothing to compress" warning). Gated by `FmAction::Upload` on the current folder; exposed as `compressSelected()` via the context menu and selection pill.

@@ -2,13 +2,6 @@
 
 ## [2.0.0] - Unreleased
 
-### Changed
-- **UI/UX redesign** of file manager and file picker: sidebar folder tree (lazy expand, Trash pinned), storage switcher as first path segment, separate search row, tinted file-type tiles (folders same size as files), floating selection pill (name · size · dimensions / count · total size), icon-only actions, list view restyle.
-- FM now owns its styling/behaviour: `resources/dist/fm.css` + `fm.js`, served via `fm.assets` and loaded with Livewire `@assets`; FontAwesome → Phosphor icons.
-- Sidebar Trash lists all trashed files of the storage root (with original location).
-- File picker: click to pick, double-click or **Choose** to select; remembers last folder per locked folder; inline "New folder" popover in the toolbar.
-- **Search covers subfolders**: file manager and picker search the current folder and everything below it (files and folder names), showing each result's location; capped at 100 results with a "refine your search" hint. Adds `FmFile::underPath()` and `FileManagerService::SEARCH_LIMIT`; `listDirectory()` now also returns `truncated`.
-
 ### Added
 - Right-click / ⋯ context menu, clipboard copy/cut/paste (replaces the Move/Copy modal), details drawer, keyboard shortcuts (Space, F2, Del, Ctrl+C/X/V/A, Esc, arrows).
 - Remembers the last folder across visits (expands only the current folder and its ancestors).
@@ -16,29 +9,31 @@
 - **PDF and video thumbnails without server software**: the browser renders PDF page 1 (vendored pdf.js 6.3.289, legacy build, loaded on demand) or a video frame on first view and stores it via `storeThumbnail()` as `{filename}_thumb.jpg` (e.g. `report.pdf_thumb.jpg`, so same-named files of different types never share a thumbnail) (validated with core `getimagesizefromstring`; JPEG only, ≤300 KB, ≤2× thumbnail size; never overwrites an existing file at the thumbnail path). Permanently deleting a file removes its thumbnail too. Adds `FmFile::canHaveClientThumbnail()`, `ThumbnailService::storeClientThumbnail()`, `FmItem` `thumbKind`.
 - **Compress to .zip**: zips the selected files and folders (recursively, active files only; entry paths relative to the current folder) into `{name}.zip` for a single item or `archive.zip` for several, saved in the current folder with the usual `_1` collision suffix. Available from the context menu (files and folders) and the selection pill; requires the Upload permission. Adds `FileManagerService::compress()`.
 - `FmPath`, `FileTypeStyle`, `FmItem` support classes; `FmFile::formatBytes()`, `dimensions()`, `previewKind()`; `FileManagerService::listTrash()`.
+- Livewire component tests for `file-manager` and `file-picker` (modal open/close events, picker event contract).
+
+### Changed
+- **Command renamed**: `mod-fm:setup` → `fm:setup`. The old name still works as a deprecated alias.
+- `declare(strict_types=1)` added to the remaining routes, lang and test files — every PHP file in the package is now strict.
+- Allows `vm-engine/synapps-auth` ^3.0.
+- **UI/UX redesign** of file manager and file picker: sidebar folder tree (lazy expand, Trash pinned), storage switcher as first path segment, separate search row, tinted file-type tiles (folders same size as files), floating selection pill (name · size · dimensions / count · total size), icon-only actions, list view restyle.
+- FM now owns its styling/behaviour: `resources/dist/fm.css` + `fm.js`, served via `fm.assets` and loaded with Livewire `@assets`; FontAwesome → Phosphor icons.
+- Sidebar Trash lists all trashed files of the storage root (with original location).
+- File picker: click to pick, double-click or **Choose** to select; remembers last folder per locked folder; inline "New folder" popover in the toolbar.
+- **Search covers subfolders**: file manager and picker search the current folder and everything below it (files and folder names), showing each result's location; capped at 100 results with a "refine your search" hint. Adds `FmFile::underPath()` and `FileManagerService::SEARCH_LIMIT`; `listDirectory()` now also returns `truncated`.
+- **PHPStan config trimmed to zero ignores** — the blanket `ignoreErrors` patterns and empty baseline are gone; `src/` passes level 7 without them under current Larastan.
+- **Semantic CSS migration** of `file-manager` and `file-picker` (same tier-0/1/2 method as synapps-auth/synmod-queue/synmod-cms). The three file-manager modals (rename, new folder, move/copy) and the picker modal now use `<x-synapse-modal>`, so Escape closes them. The image preview uses the new `<x-synapse-lightbox>`. Search inputs use `<x-synapse-search-box>`, the list view is marked with `datatable-col-checkbox`/`datatable-col-actions`, and the remaining chrome uses new shared `.syn-*` classes in synapse's `synapse-components.css`. Internal modal events renamed: `fm-open-rename`/`fm-close-rename`/`fm-close-new-folder`/`fm-close-move` → `open-modal-fm-rename`/`close-modal-fm-*`. The picker's public events (`fm-picker-open`, `fm-picker-open-{key}`, `fm:open-picker`, `fm-picker-close`, `fm:file-selected`) are unchanged.
+- **Requires `vm-engine/synapse` ^3.0** (was `^2.1|^3.0`) for `<x-synapse-lightbox>` and the new classes.
+- **Added a `phpstan.neon` gate and fixed the remaining type issues** — a package-level PHPStan config (level 7 + Larastan + scoped ignores + empty baseline) mirroring `synapps-auth`/`synapps-fallback` now keeps `src/` at zero reported errors. Fixes: typed generics on `FmFile` scopes (`Builder<FmFile>`, plus a strong-typed `creator()` relation to `App\Models\User`); `array<string, mixed>`-typed config cache with a `file_get_contents()` guard in `FmConfig`; an explicit is_string guard on the disk-selection wizard in `FmSetup`; narrowed `Collection<int, FmFile>` return for `FileManagerService::listDirectory()` and `int|string|null` handling (with `(int)` coercion) in its `log()` helper; and GD image guards in `ThumbnailService` for zero-dimension and color-allocation failures.
 
 ### Fixed
 - **Id-based actions are scoped to the browsed storage root** — trash/restore/purge (single + bulk), rename, the selection summary and the details drawer now only load files whose `folder_path` is the current root (permissions are checked against that root, and Livewire public properties are client-writable). The picker's `selectFile()`/pick likewise only accept files from the browsed root.
 - File picker modal never opened: the modal name contained the mixed-case Livewire id, but HTML lowercases the `@open-modal-*` listener name; it is now lowercased.
 - An unconfigured `fm.json` (no folders) no longer lists the storage disk root — a "No storage configured" state points to `php artisan mod-fm:setup`.
 - Picker `window` listeners are unbound on Alpine `destroy()` (no stacking on re-init).
+- **CSP-safe Alpine.js compatibility.** `file-manager` and `file-picker` migrated off inline `x-data="{ ... }"` object literals with methods and multi-statement `@click`/`x-on:*` expressions to the `Alpine.data()` registry pattern (required by `vm-engine/synapse` ^3.0's new default CSP-safe Alpine build), guarded against the `alpine:init`/`wire:navigate` timing race. Also fixed a pre-existing gap where `file-manager`'s root scope never exposed `pageName`, which the shared breadcrumbs partial expects from an ancestor Alpine scope — previously a silent no-op, but a hard error under the stricter CSP evaluator.
 
 ### Removed
 - Move/Copy modal and its labels; FM-only `.syn-file-tile*`, `.syn-folder-chip*`, `.syn-drop-overlay*`, `.syn-segmented*`, `.syn-file-thumb-sm`, `.syn-file-icon-sm` from synapse-components.css.
-
-### Changed
-- **PHPStan config trimmed to zero ignores** — the blanket `ignoreErrors` patterns and empty baseline are gone; `src/` passes level 7 without them under current Larastan.
-
-### Changed
-- **Semantic CSS migration** of `file-manager` and `file-picker` (same tier-0/1/2 method as synapps-auth/synmod-queue/synmod-cms). The three file-manager modals (rename, new folder, move/copy) and the picker modal now use `<x-synapse-modal>`, so Escape closes them. The image preview uses the new `<x-synapse-lightbox>`. Search inputs use `<x-synapse-search-box>`, the list view is marked with `datatable-col-checkbox`/`datatable-col-actions`, and the remaining chrome uses new shared `.syn-*` classes in synapse's `synapse-components.css`. Internal modal events renamed: `fm-open-rename`/`fm-close-rename`/`fm-close-new-folder`/`fm-close-move` → `open-modal-fm-rename`/`close-modal-fm-*`. The picker's public events (`fm-picker-open`, `fm-picker-open-{key}`, `fm:open-picker`, `fm-picker-close`, `fm:file-selected`) are unchanged.
-- **Requires `vm-engine/synapse` ^3.0** (was `^2.1|^3.0`) for `<x-synapse-lightbox>` and the new classes.
-- **Added a `phpstan.neon` gate and fixed the remaining type issues** — a package-level PHPStan config (level 7 + Larastan + scoped ignores + empty baseline) mirroring `synapps-auth`/`synapps-fallback` now keeps `src/` at zero reported errors. Fixes: typed generics on `FmFile` scopes (`Builder<FmFile>`, plus a strong-typed `creator()` relation to `App\Models\User`); `array<string, mixed>`-typed config cache with a `file_get_contents()` guard in `FmConfig`; an explicit is_string guard on the disk-selection wizard in `FmSetup`; narrowed `Collection<int, FmFile>` return for `FileManagerService::listDirectory()` and `int|string|null` handling (with `(int)` coercion) in its `log()` helper; and GD image guards in `ThumbnailService` for zero-dimension and color-allocation failures.
-
-### Added
-- Livewire component tests for `file-manager` and `file-picker` (modal open/close events, picker event contract).
-
-### Fixed
-- **CSP-safe Alpine.js compatibility.** `file-manager` and `file-picker` migrated off inline `x-data="{ ... }"` object literals with methods and multi-statement `@click`/`x-on:*` expressions to the `Alpine.data()` registry pattern (required by `vm-engine/synapse` ^3.0's new default CSP-safe Alpine build), guarded against the `alpine:init`/`wire:navigate` timing race. Also fixed a pre-existing gap where `file-manager`'s root scope never exposed `pageName`, which the shared breadcrumbs partial expects from an ancestor Alpine scope — previously a silent no-op, but a hard error under the stricter CSP evaluator.
 
 ## [1.0.10] - 2026-07-22
 

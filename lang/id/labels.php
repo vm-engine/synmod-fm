@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     // Halaman
     'file_manager' => 'Pengelola File',
@@ -142,7 +144,7 @@ return [
     'search_truncated' => 'Menampilkan :count hasil pertama — perjelas pencarian untuk mempersempitnya.',
     'choose' => 'Pilih',
     'not_configured' => 'Belum ada penyimpanan yang dikonfigurasi untuk pengelola file.',
-    'not_configured_help' => 'Jalankan php artisan mod-fm:setup untuk menambahkannya.',
+    'not_configured_help' => 'Jalankan php artisan fm:setup untuk menambahkannya.',
     'preview_unavailable' => 'Pratinjau tidak tersedia',
     'zoom_in' => 'Perbesar',
     'zoom_out' => 'Perkecil',

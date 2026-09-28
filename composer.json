@@ -19,7 +19,7 @@
     "require": {
         "livewire/livewire": "^4.0",
         "vm-engine/synapse": "^3.0",
-        "vm-engine/synapps-auth": "^2.0"
+        "vm-engine/synapps-auth": "^2.0|^3.0"
     },
     "require-dev": {
         "pestphp/pest": "^3.0|^4.0",

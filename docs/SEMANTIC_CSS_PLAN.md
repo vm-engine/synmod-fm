@@ -1,5 +1,7 @@
 # Semantic CSS Plan — synmod-fm
 
+> **Superseded (2.0.0 redesign):** the file manager and picker now own their styling in `resources/dist/fm.css`/`fm.js` (Phosphor icons). The Move/Copy modal and the `<x-synapse-lightbox>` preview were replaced by the clipboard and the full-screen viewer, and the FM-only `.syn-file-tile*`, `.syn-folder-chip*`, `.syn-drop-overlay*`, `.syn-segmented*`, `.syn-file-thumb-sm`, `.syn-file-icon-sm` classes were removed from synapse. Kept for history.
+
 **Status: done.** Implemented per `.claude/plans/2026-09-18-synmod-fm-semantic-css.md`, using the same tier-0/1/2 method as `packages/synapps-auth`, `synmod-queue` and `synmod-cms`. It did not follow the `syn-fm-*`/dedicated-file convention originally proposed below. fm has no CSS entry of its own, and most of the patterns turned out to be generic.
 
 ## What actually happened
