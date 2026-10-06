@@ -1,6 +1,11 @@
 # Changelog
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-10-06
+
+**Breaking:**
+- Requires `vm-engine/synapse` ^3.0. Stay on 1.x (`v1` branch) for Synapse 2.x.
+- Move/Copy modal removed (replaced by clipboard copy/cut/paste); published/overridden `file-manager`/`file-picker` views must be re-published — the markup, Alpine components and CSS (`resources/dist/fm.css` + `fm.js` via `fm.assets`) were rewritten, and FontAwesome icons are now Phosphor.
+- `mod-fm:setup` is deprecated in favour of `fm:setup` (alias still works).
 
 ### Added
 - Right-click / ⋯ context menu, clipboard copy/cut/paste (replaces the Move/Copy modal), details drawer, keyboard shortcuts (Space, F2, Del, Ctrl+C/X/V/A, Esc, arrows).

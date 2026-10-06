@@ -41,7 +41,7 @@ This is a private package, not published on Packagist — add its VCS repository
         }
     ],
     "require": {
-        "vm-engine/synmod-fm": "^1.0"
+        "vm-engine/synmod-fm": "^2.0"
     }
 }
 ```
