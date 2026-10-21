@@ -228,7 +228,7 @@
             dragCounter: 0,
             uploading: false,
             uploadProgress: 0,
-            menu: { open: false, x: 0, y: 0, kind: '', key: '', name: '', url: '', preview: '' },
+            menu: { open: false, x: 0, y: 0, kind: '', key: '', token: '', name: '', url: '', preview: '' },
             viewer: { open: false, items: [], index: 0, kind: '', url: '', name: '', page: 1, pages: 0, zoom: 1, loading: false, error: false },
             viewerToken: 0,
 
@@ -289,6 +289,10 @@
                 const el = event.currentTarget.closest('[data-fm-item]');
                 return el ? el.dataset : null;
             },
+            // Files are selected/shown by their delete token, folders by path.
+            itemRef(item) {
+                return item.kind === 'file' ? item.token : item.key;
+            },
             onItemClick(event) {
                 const item = this.itemData(event);
                 if (!item) return;
@@ -303,14 +307,14 @@
                 }
 
                 if (event.ctrlKey || event.metaKey) {
-                    this.$wire.toggleSelect(item.kind, item.key);
+                    this.$wire.toggleSelect(item.kind, this.itemRef(item));
                 } else {
-                    this.$wire.selectOnly(item.kind, item.key);
+                    this.$wire.selectOnly(item.kind, this.itemRef(item));
                 }
             },
             onItemToggle(event) {
                 const item = this.itemData(event);
-                if (item) this.$wire.toggleSelect(item.kind, item.key);
+                if (item) this.$wire.toggleSelect(item.kind, this.itemRef(item));
             },
             onItemOpen(event) {
                 const item = this.itemData(event);
@@ -330,7 +334,7 @@
                 if (['image', 'video', 'pdf'].includes(item.preview)) {
                     this.openViewer(item);
                 } else if (this.config.mode === 'manager') {
-                    this.$wire.showDetails(Number(item.key));
+                    this.$wire.showDetails(item.token);
                 }
             },
             onBlankClick(event) {
@@ -355,11 +359,11 @@
             },
             openBlankMenu(event) {
                 if (this.config.mode !== 'manager' || this.$wire.showTrash || event.target.closest('[data-fm-item]')) return;
-                this.showMenu(event.clientX, event.clientY, { kind: 'blank', key: '', name: '', url: '', preview: '' });
+                this.showMenu(event.clientX, event.clientY, { kind: 'blank', key: '', token: '', name: '', url: '', preview: '' });
             },
             ensureSelected(el) {
                 if (!el.classList.contains('is-selected')) {
-                    this.$wire.selectOnly(el.dataset.kind, el.dataset.key);
+                    this.$wire.selectOnly(el.dataset.kind, this.itemRef(el.dataset));
                 }
             },
             showMenu(x, y, item) {
@@ -369,6 +373,7 @@
                     y,
                     kind: item.kind,
                     key: item.key,
+                    token: item.token || '',
                     name: item.name || '',
                     url: item.url || '',
                     preview: item.preview || '',
@@ -422,7 +427,7 @@
             },
             menuDetails() {
                 this.closeMenu();
-                this.$wire.showDetails(Number(this.menu.key));
+                this.$wire.showDetails(this.menu.token);
             },
             menuDownload() {
                 this.closeMenu();
@@ -467,7 +472,7 @@
             },
             menuTrash() {
                 this.closeMenu();
-                this.confirm('trash', [Number(this.menu.key)], this.menu.name);
+                this.confirm('trash', [this.menu.token], this.menu.name);
             },
             menuRestore() {
                 this.closeMenu();
@@ -475,7 +480,7 @@
             },
             menuPurge() {
                 this.closeMenu();
-                this.confirm('purge', [Number(this.menu.key)], this.menu.name);
+                this.confirm('purge', [this.menu.token], this.menu.name);
             },
 
             newFolderHere() {
@@ -496,7 +501,7 @@
             },
             confirmTrashFrom(event) {
                 const data = event.currentTarget.dataset;
-                this.confirm('trash', [Number(data.id)], data.name);
+                this.confirm('trash', [data.token], data.name);
             },
             confirm(method, params, name) {
                 const text = this.config.confirm[method];

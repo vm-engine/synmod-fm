@@ -11,7 +11,7 @@ use VmEngine\Fm\Models\FmFile;
  * and fm::partials.item-row partials render. Label-free on purpose — the
  * partials translate ("Folder", "in :path").
  *
- * @phpstan-type Item array{kind: string, key: string, name: string, size: string, location: string, thumb: string|null, thumbKind: string, icon: string, tone: string, url: string, preview: string, ext: string, date: string}
+ * @phpstan-type Item array{kind: string, key: string, name: string, size: string, location: string, thumb: string|null, thumbKind: string, icon: string, tone: string, url: string, preview: string, ext: string, date: string, token: string}
  */
 final class FmItem
 {
@@ -37,6 +37,7 @@ final class FmItem
             'preview' => '',
             'ext' => '',
             'date' => '',
+            'token' => '',
         ];
     }
 
@@ -62,6 +63,8 @@ final class FmItem
             'preview' => $file->previewKind() ?? '',
             'ext' => strtoupper($file->extension),
             'date' => $file->created_at->format('d M Y'),
+            // Delete token for trash/purge, so the view never sends a raw file id to a delete action.
+            'token' => $file->delete_token,
         ];
     }
 }

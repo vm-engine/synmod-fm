@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+- Trash and permanent delete (purge) no longer send raw file ids: each file item carries its `FmFile` delete token (`token` in the item payload, `data-token` on tiles/rows/details drawer) and `trash()` / `purge()` take that token; a raw id is refused.
+- File selection no longer takes raw file ids: `selectOnly()` / `toggleSelect()` (files) and `showDetails()` take the file's delete token (`fm.js` sends `item.token`; folders still use their path), and `$selected` is `#[Locked]`, so bulk trash/purge only ever act on files selected through a valid token. Requires `vm-engine/synapse` ^3.6.
+
 ## [2.0.0] - 2026-10-06
 
 **Breaking:**

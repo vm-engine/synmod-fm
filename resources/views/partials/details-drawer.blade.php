@@ -63,7 +63,7 @@
                 ><i class="ph ph-pencil-simple" aria-hidden="true"></i></button>
             @endif
             @if (! $file->is_trashed && $can['delete'])
-                <button class="fm-icon-btn is-danger" type="button" data-id="{{ $file->id }}" data-name="{{ $file->filename }}"
+                <button class="fm-icon-btn is-danger" type="button" data-token="{{ $file->delete_token }}" data-name="{{ $file->filename }}"
                     aria-label="{{ __('fm::labels.trash') }}" title="{{ __('fm::labels.trash') }}"
                     x-on:click="confirmTrashFrom($event)"
                 ><i class="ph ph-trash" aria-hidden="true"></i></button>

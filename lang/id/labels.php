@@ -46,6 +46,7 @@ return [
     'upload_too_large' => 'File terlalu besar. Ukuran maksimum yang diizinkan adalah :max.',
     'upload_invalid_type' => 'Tipe file tidak diizinkan.',
     'trashed_success' => 'File dipindahkan ke sampah.',
+    'invalid_delete_token' => 'Token hapus tidak valid.',
     'restore_success' => 'File dipulihkan dari sampah.',
     'purge_success' => 'File dihapus secara permanen.',
     'rename_success' => 'File berhasil diganti nama.',

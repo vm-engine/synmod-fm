@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -48,7 +49,13 @@ new class extends Component
 
     public bool $showTrash = false;
 
-    /** @var array<int, int> */
+    /**
+     * Selected file ids. Locked: files are only selected through their delete token
+     * (selectOnly/toggleSelect/showDetails), so a raw id never reaches trash/purge.
+     *
+     * @var array<int, int>
+     */
+    #[Locked]
     public array $selected = [];
 
     /** @var array<int, string> */
@@ -198,19 +205,29 @@ new class extends Component
 
     // ----------------------------------------------------------- selection
 
+    /**
+     * @param  string  $key  a folder path, or a file's delete token
+     */
     public function selectOnly(string $kind, string $key): void
     {
-        $this->clearSelection();
-
         if ($kind === 'file') {
-            $this->selected = [(int) $key];
+            $id = $this->fileIdFromToken($key);
+
+            if ($id === null) {
+                return;
+            }
+
+            $this->clearSelection();
+            $this->selected = [$id];
 
             if ($this->detailsId !== null) {
-                $this->detailsId = (int) $key;
+                $this->detailsId = $id;
             }
 
             return;
         }
+
+        $this->clearSelection();
 
         $dir = FmPath::clean($key);
 
@@ -219,10 +236,18 @@ new class extends Component
         }
     }
 
+    /**
+     * @param  string  $key  a folder path, or a file's delete token
+     */
     public function toggleSelect(string $kind, string $key): void
     {
         if ($kind === 'file') {
-            $id = (int) $key;
+            $id = $this->fileIdFromToken($key);
+
+            if ($id === null) {
+                return;
+            }
+
             $this->selected = in_array($id, $this->selected, true)
                 ? array_values(array_diff($this->selected, [$id]))
                 : [...$this->selected, $id];
@@ -389,9 +414,11 @@ new class extends Component
 
     // ------------------------------------------------------------- details
 
-    public function showDetails(int $id): void
+    public function showDetails(string $token): void
     {
-        if (FmFile::whereKey($id)->where('folder_path', $this->currentFolder)->doesntExist()) {
+        $id = $this->fileIdFromToken($token);
+
+        if ($id === null || FmFile::whereKey($id)->where('folder_path', $this->currentFolder)->doesntExist()) {
             return;
         }
 
@@ -453,9 +480,17 @@ new class extends Component
 
     // ------------------------------------------------- trash / restore / purge
 
-    public function trash(int $id): void
+    public function trash(string $token): void
     {
         if (! $this->authorizeAction(FmAction::Delete)) {
+            return;
+        }
+
+        $id = $this->fileIdFromToken($token);
+
+        if ($id === null) {
+            $this->dispatch('synapse-confirmed');
+
             return;
         }
 
@@ -519,9 +554,17 @@ new class extends Component
         $this->listKey++;
     }
 
-    public function purge(int $id): void
+    public function purge(string $token): void
     {
         if (! $this->authorizeAction(FmAction::Delete)) {
+            return;
+        }
+
+        $id = $this->fileIdFromToken($token);
+
+        if ($id === null) {
+            $this->dispatch('synapse-confirmed');
+
             return;
         }
 
@@ -572,6 +615,20 @@ new class extends Component
         }
 
         return FmFile::whereIn('id', $ids)->where('folder_path', $this->currentFolder)->get();
+    }
+
+    /** The file id a delete token stands for, or null (with a notice) when it is invalid. */
+    private function fileIdFromToken(string $token): ?int
+    {
+        $id = FmFile::validateDeleteToken($token);
+
+        if ($id === false) {
+            $this->dispatch('notify', variant: 'danger', title: __('fm::labels.error'), message: __('fm::labels.invalid_delete_token'));
+
+            return null;
+        }
+
+        return (int) $id;
     }
 
     private function forget(int $id): void

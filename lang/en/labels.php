@@ -46,6 +46,7 @@ return [
     'upload_too_large' => 'File is too large. Maximum allowed size is :max.',
     'upload_invalid_type' => 'File type is not allowed.',
     'trashed_success' => 'File(s) moved to trash.',
+    'invalid_delete_token' => 'Invalid delete token.',
     'restore_success' => 'File(s) restored from trash.',
     'purge_success' => 'File(s) permanently deleted.',
     'rename_success' => 'File renamed successfully.',

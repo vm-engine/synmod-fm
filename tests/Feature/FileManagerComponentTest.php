@@ -133,7 +133,7 @@ it('selects files and folders exclusively or additively', function () {
     Storage::disk('public')->makeDirectory('fm/public/docs');
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->assertSet('selected', [$this->file->id])
         ->assertSet('selectedDirs', [])
         ->call('toggleSelect', 'dir', 'docs')
@@ -145,19 +145,36 @@ it('selects files and folders exclusively or additively', function () {
         ->assertSet('selectedDirs', []);
 });
 
+it('selects and shows files by delete token only, and the selection cannot be set directly', function () {
+    $component = Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->assertDispatched('notify', variant: 'danger', message: __('fm::labels.invalid_delete_token'))
+        ->assertSet('selected', [])
+        ->call('toggleSelect', 'file', (string) $this->file->id)
+        ->assertSet('selected', [])
+        ->call('showDetails', (string) $this->file->id)
+        ->assertSet('selected', [])
+        ->assertSet('detailsId', null)
+        ->call('toggleSelect', 'file', $this->file->delete_token)
+        ->assertSet('selected', [$this->file->id]);
+
+    expect(fn () => $component->set('selected', [999]))->toThrow(Exception::class);
+});
+
 it('summarises the selection with total size and a single-file shortcut', function () {
     $second = ($this->makeFile)('brief.pdf', 2000);
     $this->file->update(['size' => 1000]);
 
     $component = Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->set('selected', [$this->file->id, $second->id]);
+        ->call('selectOnly', 'file', $this->file->delete_token)
+        ->call('toggleSelect', 'file', $second->delete_token);
 
     $summary = $component->instance()->selectionSummary;
     expect($summary['files'])->toBe(2)
         ->and($summary['bytes'])->toBe(3000)
         ->and($summary['single'])->toBeNull();
 
-    $component->set('selected', [$second->id]);
+    $component->call('selectOnly', 'file', $second->delete_token);
     expect($component->instance()->selectionSummary['single']->id)->toBe($second->id);
 });
 
@@ -167,7 +184,7 @@ it('copies then pastes a duplicate into another folder', function () {
     Storage::disk('public')->makeDirectory('fm/public/archive');
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('clipboardCopy')
         ->assertSet('clipboard.mode', 'copy')
         ->call('paste', 'archive')
@@ -182,7 +199,7 @@ it('cuts then pastes a move and clears the clipboard', function () {
     Storage::disk('public')->makeDirectory('fm/public/archive');
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('clipboardCut')
         ->call('paste', 'archive')
         ->assertSet('clipboard.files', []);
@@ -193,7 +210,7 @@ it('cuts then pastes a move and clears the clipboard', function () {
 
 it('treats cut and paste into the same folder as a no-op', function () {
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('clipboardCut')
         ->call('paste')
         ->assertSet('clipboard.files', []);
@@ -206,7 +223,7 @@ it('keeps the clipboard while navigating', function () {
     Storage::disk('public')->makeDirectory('fm/public/archive');
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('clipboardCopy')
         ->call('navigateTo', 'archive')
         ->assertSet('subPath', 'archive')
@@ -215,7 +232,7 @@ it('keeps the clipboard while navigating', function () {
 
 it('refuses to paste into an unsafe target', function () {
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('selectOnly', 'file', (string) $this->file->id)
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('clipboardCopy')
         ->call('paste', '../outside');
 
@@ -230,7 +247,7 @@ it('refuses to paste without copy permission', function () {
     $admin->roles()->attach($adminRole);
 
     Livewire::actingAs($admin)->test('fm::file-manager')
-        ->set('selected', [$this->file->id])
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->set('clipboard', ['mode' => 'copy', 'files' => [$this->file->id]])
         ->call('paste', 'archive')
         ->assertDispatched('notify');
@@ -315,7 +332,7 @@ it('lists all trashed files of the storage in trash view', function () {
 
 it('opens and closes the details drawer', function () {
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('showDetails', $this->file->id)
+        ->call('showDetails', $this->file->delete_token)
         ->assertSet('detailsId', $this->file->id)
         ->assertSet('selected', [$this->file->id])
         ->assertSeeHtml('fm-drawer')
@@ -352,17 +369,17 @@ it('ignores id-based actions on files outside the current storage root', functio
     ]);
 
     $component = Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('trash', $foreign->id)
+        ->call('trash', $foreign->delete_token)
         ->call('startRename', $foreign->id)
         ->assertNotDispatched('open-modal-fm-rename')
-        ->set('selected', [$foreign->id])
+        ->call('selectOnly', 'file', $foreign->delete_token)
         ->call('trashSelected')
         ->set('detailsId', $foreign->id);
 
     expect($foreign->fresh()->is_trashed)->toBeFalse()
         ->and($component->instance()->detailsFile)->toBeNull();
 
-    $component->set('selected', [$foreign->id])->call('purgeSelected');
+    $component->call('selectOnly', 'file', $foreign->delete_token)->call('purgeSelected');
     expect(FmFile::find($foreign->id))->not->toBeNull();
 });
 
@@ -394,6 +411,24 @@ it('asks to refine the search when results are capped', function () {
 });
 
 // --- browser-rendered thumbnails -----------------------------------------
+
+it('trashes and purges by delete token only, never by a raw id', function () {
+    $component = Livewire::actingAs($this->user)->test('fm::file-manager')
+        ->assertSeeHtml('data-token="'.$this->file->delete_token.'"')
+        ->call('trash', (string) $this->file->id)
+        ->assertDispatched('notify', variant: 'danger', message: __('fm::labels.invalid_delete_token'));
+    expect($this->file->fresh()->is_trashed)->toBeFalse();
+
+    $component->call('trash', $this->file->delete_token);
+    expect($this->file->fresh()->is_trashed)->toBeTrue();
+
+    $component->call('purge', (string) $this->file->id)
+        ->assertDispatched('notify', variant: 'danger', message: __('fm::labels.invalid_delete_token'));
+    expect($this->file->fresh())->not->toBeNull();
+
+    $component->call('purge', $this->file->delete_token);
+    expect($this->file->fresh())->toBeNull();
+});
 
 function fmJpegDataUrl(): string
 {
@@ -459,7 +494,7 @@ it('shows the stored pdf thumbnail in the details drawer', function () {
     $this->file->update(['has_thumbnail' => true]);
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->call('showDetails', $this->file->id)
+        ->call('showDetails', $this->file->delete_token)
         ->assertSeeHtml('report.pdf_thumb.jpg" alt="report.pdf"');
 });
 
@@ -469,7 +504,7 @@ it('compresses the selection into a zip in the current folder', function () {
     ($this->makeFile)('docs/inner.pdf');
 
     Livewire::actingAs($this->user)->test('fm::file-manager')
-        ->set('selected', [$this->file->id])
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->set('selectedDirs', ['docs'])
         ->call('compressSelected')
         ->assertSet('selected', [])
@@ -488,7 +523,7 @@ it('refuses to compress without upload permission', function () {
     $admin->roles()->attach($adminRole);
 
     Livewire::actingAs($admin)->test('fm::file-manager')
-        ->set('selected', [$this->file->id])
+        ->call('selectOnly', 'file', $this->file->delete_token)
         ->call('compressSelected')
         ->assertDispatched('notify', variant: 'danger');
 

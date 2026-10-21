@@ -6,6 +6,7 @@
     data-fm-item
     data-kind="{{ $item['kind'] }}"
     data-key="{{ $item['key'] }}"
+    data-token="{{ $item['token'] }}"
     data-name="{{ $item['name'] }}"
     data-url="{{ $item['url'] }}"
     data-preview="{{ $item['preview'] }}"
