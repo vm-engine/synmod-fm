@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-13
+
+### Changed
+- Requires vm-engine/synapse ^3.10: backend pages render `<x-synapse-breadcrumbs>` instead of including the deprecated `layouts.partials.breadcrumbs`.
+- Icons use Phosphor (`ph ph-*`) instead of Font Awesome, including the `module.json` menu icons; spinners are `ph ph-spinner syn-spin`. Synapse 3.10 deprecates Font Awesome.
+
 ## [2.1.0] - 2026-10-21
 
 ### Security
