@@ -7,7 +7,7 @@
         <script src="{{ \VmEngine\Fm\Http\Controllers\AssetController::url('fm.js') }}"></script>
     @endassets
 
-    @include('synapps::components.layouts.partials.breadcrumbs', ['breadcrumbs' => $this->breadcrumbs])
+    <x-synapse-breadcrumbs :breadcrumbs="$this->breadcrumbs" />
 
     <x-synapse-confirm-dialog />
 

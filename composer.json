@@ -18,7 +18,7 @@
     ],
     "require": {
         "livewire/livewire": "^4.0",
-        "vm-engine/synapse": "^3.6",
+        "vm-engine/synapse": "^3.10",
         "vm-engine/synapps-auth": "^2.0|^3.0"
     },
     "require-dev": {
